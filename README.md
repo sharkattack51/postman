@@ -1,2 +1,35 @@
 # postman
-easy pub/sub server using websocket.
+easy pub/sub massaging server using websocket.
+
+### Websocket API
+
+- `Ping`
+  - <- "ping {}"
+- `Status`
+  - <- "status {}"
+- `Subscribe`
+  - <- "subscribe {"channel": "CHANNEL"}"
+- `Unsubscribe`
+  - <- "unsubscribe {"channel": "CHANNEL"}"
+- `Publish`
+  - <- "publish {"channel": "CHANNEL", "message": "MESSAGE"}"
+  - <- "publish {"channel": "CHANNEL", "message": "MESSAGE", "tag": "TAG", "extention": "OTHER"}"
+
+### Http API
+
+- `Status`
+  - GET http://XXX.XXX.XXX.XXX:8800/postman/status
+- `Publish`
+  - GET http://XXX.XXX.XXX.XXX:8800/postman/publish?channel=CHANNEL&message=MESSAGE
+  - GET http://XXX.XXX.XXX.XXX:8800/postman/publish?channel=CHANNEL&message=MESSAGE&tag=TAG&extention=OTHER
+  - POST http://XXX.XXX.XXX.XXX:8800/postman/publish <- "json={"channel": "CHANNEL", "message": "MESSAGE"}"
+  - POST http://XXX.XXX.XXX.XXX:8800/postman/publish <- "json={"channel": "CHANNEL", "message": "MESSAGE", "tag": "TAG", "extention": "OTHER"}"
+
+### using on Heroku
+
+change code in `main.go`.
+```
+TARGET_HEROKU = true
+```
+
+and `go build ./...`
