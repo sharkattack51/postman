@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title></title>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+<script src="./lib/postman.js"></script>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+<script>
+	$(function() {
+        /*
+        * postman events
+        */
+        let postman = new Postman("127.0.0.1:8800");
+        postman.on("pingpong", function() {
+            console.log("pong");
+        });
+        postman.on("message", function(e) {
+            console.log(e.data);
+            $("#txt_message").text("[" + e.data.channel + "]: " + e.data.message + "@" + String(Date.now()));
+        });
+        postman.on("close", function() {
+            console.log("close");
+        });
+        
+        /*
+        * buttons events
+        */
+        $("#btn_ping").on("click", function() {
+            postman.ping();
+        });
+
+        $("#btn_subscribe").on("click", function() {
+            postman.subscribe("test");
+        });
+
+        $("#btn_unsubscribe").on("click", function() {
+            postman.unsubscribe("test");
+        });
+
+        $("#btn_publish").on("click", function() {
+            postman.publish("test", "message from js", "", "");
+        });
+
+        $("#btn_clear").on("click", function() {
+            $("#txt_message").text("");
+        });
+	});
+</script>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="page-header">
+            <h1>postman</h1>
+        </div>
+
+        <button type="button" class="btn btn-info" id="btn_ping">Ping</button>
+        <button type="button" class="btn btn-info" id="btn_subscribe">Subscribe [ test ]</button>
+        <button type="button" class="btn btn-info" id="btn_unsubscribe">Unsubscribe [ test ]</button>
+        <button type="button" class="btn btn-info" id="btn_publish">Publish [ to test ]</button>
+
+        <hr/>
+        <div class="p-3 mb-2 bg-light text-dark" id="txt_message">recieve message from Postman...</div>
+        <button type="button" class="btn btn-secondary" id="btn_clear">Clear</button>
+    </div>
+</body>
+</html>

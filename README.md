@@ -1,5 +1,5 @@
 # postman
-easy pub/sub massaging server using websocket.
+easy pub/sub messaging server using websocket.
 
 ### Websocket API
 
@@ -25,7 +25,12 @@ easy pub/sub massaging server using websocket.
   - POST http://XXX.XXX.XXX.XXX:8800/postman/publish <- "json={"channel": "CHANNEL", "message": "MESSAGE"}"
   - POST http://XXX.XXX.XXX.XXX:8800/postman/publish <- "json={"channel": "CHANNEL", "message": "MESSAGE", "tag": "TAG", "extention": "OTHER"}"
 
-### using on Heroku
+### Client Library
+
+- `Unity`: require [websocket-sharp.dll](https://github.com/sta/websocket-sharp)
+- `js`
+
+### Using on Heroku
 
 change code in `main.go`.
 ```
