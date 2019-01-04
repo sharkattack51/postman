@@ -27,7 +27,10 @@ easy pub/sub messaging server using websocket.
 
 ### Client Library
 
-- `Unity`: require [websocket-sharp.dll](https://github.com/sta/websocket-sharp)
+- `Unity`
+  - require
+    - [websocket-sharp.dll](https://github.com/sta/websocket-sharp)
+    - [Json.NET for Unity](https://assetstore.unity.com/packages/tools/input-management/json-net-for-unity-11347)
 - `js`
 
 ### Using on Heroku
