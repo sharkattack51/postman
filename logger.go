@@ -24,6 +24,7 @@ func NewLogger(logDir string, logFile string) *Logger {
 		logPath+".%Y%m%d",
 		rotatelogs.WithLinkName(logPath),
 		rotatelogs.WithRotationTime(time.Hour*24),
+		rotatelogs.WithMaxAge(time.Hour*24*365*10),
 	)
 	if err != nil {
 		log.Fatalln(err)

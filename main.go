@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	VERSION       = "0.8"
+	VERSION       = "0.8.1"
 	LOG_FILE      = "postman.log"
 	TARGET_HEROKU = false
 )
