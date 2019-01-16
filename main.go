@@ -6,21 +6,23 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/sharkattack51/golem"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	VERSION       = "0.8.1"
+	VERSION       = "0.8.5"
 	LOG_FILE      = "postman.log"
 	TARGET_HEROKU = false
 )
 
 var (
-	roomMg *golem.RoomManager
-	conns  map[string]*golem.Connection
-	logger *Logger
+	roomMg    *golem.RoomManager
+	conns     map[string]*golem.Connection
+	whiteList []string
+	logger    *Logger
 )
 
 //
@@ -30,12 +32,23 @@ var (
 func main() {
 	wsport := flag.String("wsport", "8800", "listen websocket port number")
 	logDir := flag.String("log", "", "output log location")
+	chlist := flag.String("chlist", "", "whitelist for channels")
 	flag.Parse()
 
 	// for heroku build
 	if TARGET_HEROKU {
-		herokuPort := os.Getenv("PORT")
-		wsport = &herokuPort
+		hrkEnvPort := os.Getenv("PORT")
+		wsport = &hrkEnvPort
+		hrkEnvChlist := os.Getenv("CHLIST")
+		chlist = &hrkEnvChlist
+	}
+
+	// whitelist for subscribe channnels
+	chlistSplits := strings.Split(*chlist, ",")
+	for _, ch := range chlistSplits {
+		if ch != "" {
+			whiteList = append(whiteList, ch)
+		}
 	}
 
 	// log

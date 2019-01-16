@@ -52,11 +52,28 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 	remote := getRemoteIPfromConn(conn)
 
 	if msg.Channel == "" {
-		log.Println(fmt.Sprintf("> [Worning] subscribe channnel is empty from %s", remote))
+		log.Println(fmt.Sprintf("> [Worning] subscribe channel is empty from %s", remote))
 		if logger != nil {
-			logger.Log(WARN, "subscribe channnel is empty", logrus.Fields{"method": "subscribe", "channel": msg.Channel, "from": remote})
+			logger.Log(WARN, "subscribe channel is empty", logrus.Fields{"method": "subscribe", "channel": msg.Channel, "from": remote})
 		}
 		return
+	}
+
+	if len(whiteList) > 0 {
+		contain := false
+		for _, ch := range whiteList {
+			if msg.Channel == ch {
+				contain = true
+				break
+			}
+		}
+		if !contain {
+			log.Println(fmt.Sprintf("> [Worning] whitelist does not contain subscribe channel from %s", remote))
+			if logger != nil {
+				logger.Log(WARN, "whitelist does not contain subscribe channel", logrus.Fields{"method": "subscribe", "channel": msg.Channel, "from": remote})
+			}
+			return
+		}
 	}
 
 	log.Println(fmt.Sprintf("> [Subscribe] ch:%s from %s", msg.Channel, remote))
@@ -71,9 +88,9 @@ func Unsubscribe(conn *golem.Connection, msg *SubscribeMessage) {
 	remote := getRemoteIPfromConn(conn)
 
 	if msg.Channel == "" {
-		log.Println(fmt.Sprintf("> [Worning] unsubscribe channnel is empty from %s", remote))
+		log.Println(fmt.Sprintf("> [Worning] unsubscribe channel is empty from %s", remote))
 		if logger != nil {
-			logger.Log(WARN, "unsubscribe channnel is empty", logrus.Fields{"method": "unsubscribe", "channel": msg.Channel, "from": remote})
+			logger.Log(WARN, "unsubscribe channel is empty", logrus.Fields{"method": "unsubscribe", "channel": msg.Channel, "from": remote})
 		}
 		return
 	}
@@ -90,9 +107,9 @@ func Publish(conn *golem.Connection, msg *PublishMessage) {
 	remote := getRemoteIPfromConn(conn)
 
 	if msg.Channel == "" {
-		log.Println(fmt.Sprintf("> [Worning] publish channnel is empty from %s", remote))
+		log.Println(fmt.Sprintf("> [Worning] publish channel is empty from %s", remote))
 		if logger != nil {
-			logger.Log(WARN, "publish channnel is empty", logrus.Fields{"method": "publish", "channel": msg.Channel, "message": msg.Message, "tag": msg.Tag, "extention": msg.Extention, "from": remote})
+			logger.Log(WARN, "publish channel is empty", logrus.Fields{"method": "publish", "channel": msg.Channel, "message": msg.Message, "tag": msg.Tag, "extention": msg.Extention, "from": remote})
 		}
 		return
 	}
