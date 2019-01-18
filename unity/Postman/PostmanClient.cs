@@ -121,7 +121,8 @@ namespace Postman
 			
 			try
 			{
-				webSocket = new WebSocket(string.Format("ws://{0}/postman", serverIp));
+				string ip = serverIp.Replace("http://", "").Replace("https://", "");
+				webSocket = new WebSocket(string.Format("ws://{0}/postman", ip));
 				webSocket.Compression = CompressionMethod.Deflate;
 				webSocket.OnOpen += OnWebSocketOpen;
 				webSocket.OnMessage += OnWebSocketMessage;
