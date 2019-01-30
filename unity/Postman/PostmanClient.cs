@@ -44,7 +44,7 @@ namespace Postman
 		void Start()
 		{
 			if(connectOnStart)
-				Connect();
+				Connect(true);
 		}
 		
 		void Update()
@@ -68,7 +68,15 @@ namespace Postman
 			{
 				if(messageStack != null && messageStack.Count > 0)
 				{
-					foreach(PublishMessageData msg in messageStack)
+					PublishMessageData[] copyStack;
+					
+					lock(((ICollection)messageStack).SyncRoot)
+					{
+						copyStack = messageStack.ToArray();
+						messageStack = new List<PublishMessageData>();
+					}
+
+					foreach(PublishMessageData msg in copyStack)
 					{
 						Debug.Log(string.Format("PostmanClient :: [{0}] > {1}", msg.channel, msg.message));
 				
@@ -77,8 +85,6 @@ namespace Postman
 						
 						latestMessage = msg;
 					}
-
-					messageStack = new List<PublishMessageData>();
 				}
 
 				invokeOnMessage = false;
@@ -106,7 +112,7 @@ namespace Postman
 		void OnApplicationQuit()
 		{
 			reconnectOnClose = false;
-			Close();
+			Close(true);
 		}
 
 
@@ -198,7 +204,9 @@ namespace Postman
 				try
 				{
 					PublishMessageData msg = JsonConvert.DeserializeObject<PublishMessageData>(msgstr);
-					messageStack.Add(msg);
+
+					lock(((ICollection)messageStack).SyncRoot)
+						messageStack.Add(msg);
 				}
 				catch
 				{
