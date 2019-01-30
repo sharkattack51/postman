@@ -53,9 +53,9 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if msg.Channel == "" {
-		log.Println(fmt.Sprintf("> [Worning] publish channnel is empty from %s", r.RemoteAddr))
+		log.Println(fmt.Sprintf("> [Worning] publish channel is empty from %s", r.RemoteAddr))
 		if logger != nil {
-			logger.Log(WARN, "publish channnel is empty", logrus.Fields{"method": "publish", "channel": msg.Channel, "message": msg.Message, "tag": msg.Tag, "extention": msg.Extention, "from": r.RemoteAddr})
+			logger.Log(WARN, "publish channel is empty", logrus.Fields{"method": "publish", "channel": msg.Channel, "message": msg.Message, "tag": msg.Tag, "extention": msg.Extention, "from": r.RemoteAddr})
 		}
 	} else {
 		log.Println(fmt.Sprintf("> [Publish] ch:%s / msg:%s from %s", msg.Channel, msg.BuildLogString(), r.RemoteAddr))
@@ -88,5 +88,12 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	msg := NewStatusMessage(roomMg)
 
 	j, _ := json.Marshal(msg)
+	fmt.Fprint(w, string(j))
+}
+
+func StatusPpHandler(w http.ResponseWriter, r *http.Request) {
+	msg := NewStatusMessage(roomMg)
+
+	j, _ := json.MarshalIndent(msg, "", "    ")
 	fmt.Fprint(w, string(j))
 }

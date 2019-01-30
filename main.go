@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	VERSION       = "0.8.5"
+	VERSION       = "0.8.6"
 	LOG_FILE      = "postman.log"
 	TARGET_HEROKU = false
 )
@@ -80,6 +80,7 @@ func main() {
 	fmt.Println("=== Http API ===")
 	fmt.Println("[Status]")
 	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/status", host, *wsport))
+	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/status_pp", host, *wsport))
 	fmt.Println("[Publish]")
 	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/publish?channel=CHANNEL&message=MESSAGE", host, *wsport))
 	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/publish?channel=CHANNEL&message=MESSAGE&tag=TAG&extention=OTHER", host, *wsport))
@@ -97,6 +98,7 @@ func main() {
 	// http routing
 	http.HandleFunc("/postman/publish", PublishHandler)
 	http.HandleFunc("/postman/status", StatusHandler)
+	http.HandleFunc("/postman/status_pp", StatusPpHandler)
 
 	err := http.ListenAndServe(":"+(*wsport), nil)
 	if err != nil {
