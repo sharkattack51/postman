@@ -1,19 +1,23 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/sharkattack51/golem"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	VERSION       = "0.8.6"
+	VERSION       = "0.8.7"
 	LOG_FILE      = "postman.log"
 	TARGET_HEROKU = false
 )
@@ -92,6 +96,8 @@ func main() {
 		logger.Log(INFO, "postman start", logrus.Fields{"host": host, "port": wsport})
 	}
 
+	srv := &http.Server{Addr: ":" + (*wsport)}
+
 	// websocket routing
 	http.HandleFunc("/postman", CreateRouter().Handler())
 
@@ -100,8 +106,19 @@ func main() {
 	http.HandleFunc("/postman/status", StatusHandler)
 	http.HandleFunc("/postman/status_pp", StatusPpHandler)
 
-	err := http.ListenAndServe(":"+(*wsport), nil)
-	if err != nil {
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM)
+	<-sigCh // blocking
+
+	// graceful shutdown
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
