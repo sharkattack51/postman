@@ -2,6 +2,8 @@ package main
 
 import (
 	"net"
+	"os"
+	"runtime"
 	"strings"
 
 	"github.com/sharkattack51/golem"
@@ -13,11 +15,22 @@ import (
 
 func getHostIP() string {
 	ip := "127.0.0.1"
-	addrs, _ := net.InterfaceAddrs()
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				ip = ipnet.IP.String()
+
+	if runtime.GOOS == "windows" {
+		host, _ := os.Hostname()
+		addrs, _ := net.LookupIP(host)
+		for _, a := range addrs {
+			if ipv4 := a.To4(); ipv4 != nil {
+				ip = ipv4.String()
+			}
+		}
+	} else {
+		addrs, _ := net.InterfaceAddrs()
+		for _, a := range addrs {
+			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					ip = ipnet.IP.String()
+				}
 			}
 		}
 	}
