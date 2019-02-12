@@ -15,7 +15,6 @@ import (
 
 func getHostIP() string {
 	ip := "127.0.0.1"
-
 	if runtime.GOOS == "windows" {
 		host, _ := os.Hostname()
 		addrs, _ := net.LookupIP(host)

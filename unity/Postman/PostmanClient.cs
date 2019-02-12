@@ -124,6 +124,9 @@ namespace Postman
 				Debug.Log("PostmanClient :: already connected");
 				return;
 			}
+
+			if(webSocket != null)
+				Close(true);
 			
 			try
 			{

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	VERSION       = "0.8.8"
+	VERSION       = "0.8.9"
 	LOG_FILE      = "postman.log"
 	TARGET_HEROKU = false
 )
@@ -113,11 +113,13 @@ func main() {
 	}()
 
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGTERM)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGTERM, os.Interrupt)
+	defer signal.Stop(sigCh)
 	<-sigCh // blocking
 
 	// graceful shutdown
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}
