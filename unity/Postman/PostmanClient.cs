@@ -31,7 +31,6 @@ namespace Postman
 		private bool reconnecting = false;
 
 		private bool invokeOnConnect = false;
-		private bool invokeOnMessage = false;
 		private bool invokeOnClose = false;
 		private bool invokePing = false;
 
@@ -64,30 +63,25 @@ namespace Postman
 				invokeOnConnect = false;
 			}
 
-			if(invokeOnMessage)
+			if(messageStack != null && messageStack.Count > 0)
 			{
-				if(messageStack != null && messageStack.Count > 0)
-				{
-					PublishMessageData[] copyStack;
-					
-					lock(((ICollection)messageStack).SyncRoot)
-					{
-						copyStack = messageStack.ToArray();
-						messageStack = new List<PublishMessageData>();
-					}
-
-					foreach(PublishMessageData msg in copyStack)
-					{
-						Debug.Log(string.Format("PostmanClient :: [{0}] > {1}", msg.channel, msg.message));
+				PublishMessageData[] copyStack;
 				
-						if(OnMessage != null)
-							OnMessage(msg);
-						
-						latestMessage = msg;
-					}
+				lock(((ICollection)messageStack).SyncRoot)
+				{
+					copyStack = messageStack.ToArray();
+					messageStack = new List<PublishMessageData>();
 				}
 
-				invokeOnMessage = false;
+				foreach(PublishMessageData msg in copyStack)
+				{
+					Debug.Log(string.Format("PostmanClient :: [{0}] > {1}", msg.channel, msg.message));
+			
+					if(OnMessage != null)
+						OnMessage(msg);
+					
+					latestMessage = msg;
+				}
 			}
 
 			if(invokeOnClose)
@@ -215,9 +209,6 @@ namespace Postman
 				{
 					return;
 				}
-
-				if(messageStack != null && messageStack.Count > 0)
-					invokeOnMessage = true;
 			}			
 		}
 
