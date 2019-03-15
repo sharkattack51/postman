@@ -60,4 +60,16 @@ namespace Postman
 			this.extention = extention;
 		}
 	}
+
+	public class ResultMessageData : PostmanMassageData
+	{
+		public string result;
+		public string error;
+
+		public ResultMessageData(string result, string error)
+		{
+			this.result = result;
+			this.error = error;
+		}
+	}
 }

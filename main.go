@@ -14,11 +14,13 @@ import (
 
 	"github.com/sharkattack51/golem"
 	"github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const (
-	VERSION       = "0.8.9"
+	VERSION       = "0.9"
 	LOG_FILE      = "postman.log"
+	DB_FILE       = "postman.db"
 	TARGET_HEROKU = false
 )
 
@@ -27,6 +29,7 @@ var (
 	conns     map[string]*golem.Connection
 	whiteList []string
 	logger    *Logger
+	kvsDB     *leveldb.DB
 )
 
 //
@@ -55,9 +58,19 @@ func main() {
 		}
 	}
 
-	// log
-	if *logDir != "" {
-		logger = NewLogger(*logDir, LOG_FILE)
+	if !TARGET_HEROKU {
+		// log
+		if *logDir != "" {
+			logger = NewLogger(*logDir, LOG_FILE)
+		}
+
+		// store db
+		var err error
+		kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer kvsDB.Close()
 	}
 
 	host := getHostIP()
@@ -78,19 +91,32 @@ func main() {
 	fmt.Println("[Unsubscribe]")
 	fmt.Println("<- \"unsubscribe {\"channel\": \"CHANNEL\"}\"")
 	fmt.Println("[Publish]")
-	fmt.Println("<- \"publish {\"channel\": \"CHANNEL\", \"message\": \"MESSAGE\"}\"")
-	fmt.Println("<- \"publish {\"channel\": \"CHANNEL\", \"message\": \"MESSAGE\", \"tag\": \"TAG\", \"extention\": \"OTHER\"}\"")
+	fmt.Println("<- \"publish {\"channel\": \"CHANNEL\", \"message\": \"MESSAGE\", [\"tag\": \"TAG\", \"extention\": \"OTHER\"]}\"")
+	if kvsDB != nil {
+		fmt.Println("[Store]")
+		fmt.Println("<- \"store {\"command\": \"(GET|SET|HAS|DEL)\", \"key\": \"KEY\", [\"value\": \"VALUE\"]}\"")
+	}
 	fmt.Println("")
 	fmt.Println("=== Http API ===")
+	fmt.Println(fmt.Sprintf("http://%s:%s/postman", host, *wsport))
 	fmt.Println("[Status]")
-	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/status", host, *wsport))
-	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/status_pp", host, *wsport))
+	fmt.Println("(GET) /status")
+	fmt.Println("(GET) /status_pp")
 	fmt.Println("[Publish]")
-	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/publish?channel=CHANNEL&message=MESSAGE", host, *wsport))
-	fmt.Println(fmt.Sprintf("GET http://%s:%s/postman/publish?channel=CHANNEL&message=MESSAGE&tag=TAG&extention=OTHER", host, *wsport))
-	fmt.Println(fmt.Sprintf("POST http://%s:%s/postman/publish <- \"json={\"channel\": \"CHANNEL\", \"message\": \"MESSAGE\"}\"", host, *wsport))
-	fmt.Println(fmt.Sprintf("POST http://%s:%s/postman/publish <- \"json={\"channel\": \"CHANNEL\", \"message\": \"MESSAGE\", \"tag\": \"TAG\", \"extention\": \"OTHER\"}\"", host, *wsport))
+	fmt.Println("(GET) /publish?channel=CHANNEL&message=MESSAGE[&tag=TAG&extention=OTHER]")
+	fmt.Println("(POST) /publish <- \"json={\"channel\": \"CHANNEL\", \"message\": \"MESSAGE\", [\"tag\": \"TAG\", \"extention\": \"OTHER\"]}\"")
+	if kvsDB != nil {
+		fmt.Println("[Store]")
+		fmt.Println("(GET) /store?command=(GET|SET|HAS|DEL)&key=KEY[&value=VALUE]")
+		fmt.Println("(POST) /store <- \"json={\"command\": \"(GET|SET|HAS|DEL)\", \"key\": \"KEY\", [\"value\": \"VALUE\"]}\"")
+	}
 	fmt.Println("===================================================")
+	fmt.Println("and all parameters have shortcut string...")
+	fmt.Println("[Pub/Sub] \"channnel\"=\"ch\", \"message\"=\"msg\", \"extention\"=\"ext\"")
+	if kvsDB != nil {
+		fmt.Println("[Store] \"command\"=\"cmd\", \"value\"=\"val\"")
+	}
+	fmt.Println("")
 
 	if logger != nil {
 		logger.Log(INFO, "postman start", logrus.Fields{"host": host, "port": wsport})
@@ -105,6 +131,7 @@ func main() {
 	http.HandleFunc("/postman/publish", PublishHandler)
 	http.HandleFunc("/postman/status", StatusHandler)
 	http.HandleFunc("/postman/status_pp", StatusPpHandler)
+	http.HandleFunc("/postman/store", StoreHandler)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {

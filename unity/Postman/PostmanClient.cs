@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System;
+using UnityEngine.Networking;
 using UnityEngine;
 using WebSocketSharp;
 using Newtonsoft.Json;
@@ -287,6 +288,82 @@ namespace Postman
 				webSocket.SendAsync(PostmanMassageData.BuildMessage(MessageType.PUBLISH, json), null);
 
 			yield return null;
+		}
+
+		public string StoreGet(string key)
+		{
+			string ip = serverIp.Replace("http://", "").Replace("https://", "");
+			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=GET&key={1}", ip, key));
+			request.SendWebRequest();
+
+			while(!request.isDone);
+			
+			ResultMessageData responce;
+			if(request.isHttpError || request.isNetworkError)
+			{
+				Debug.LogError("PostmanClient :: " + request.error);
+				responce = new ResultMessageData("", request.error);
+			}
+			else
+			{
+				responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
+				Debug.Log(string.Format("PostmanClient :: store get [ {0} : {1} ]", key, responce.result));
+			}
+
+			return responce.result;
+		}
+
+		public void StoreSet(string key, string val)
+		{
+			string ip = serverIp.Replace("http://", "").Replace("https://", "");
+			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=SET&key={1}&val={2}", ip, key, val));
+			request.SendWebRequest();
+
+			while(!request.isDone);
+			
+			if(request.isHttpError || request.isNetworkError)
+				Debug.LogError("PostmanClient :: " + request.error);
+			else
+				Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
+		}
+
+		public bool StoreHasKey(string key)
+		{
+			string ip = serverIp.Replace("http://", "").Replace("https://", "");
+			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=HAS&key={1}", ip, key));
+			request.SendWebRequest();
+
+			while(!request.isDone);
+			
+			ResultMessageData responce;
+			if(request.isHttpError || request.isNetworkError)
+			{
+				Debug.LogError("PostmanClient :: " + request.error);
+				responce = new ResultMessageData("", request.error);
+			}
+			else
+			{
+				responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
+				Debug.Log(string.Format("PostmanClient :: store haskey [ {0} ] ", key) + responce.result);
+			}
+
+			bool b = false;
+			bool.TryParse(responce.result, out b);
+			return b;
+		}
+
+		public void StoreDelete(string key)
+		{
+			string ip = serverIp.Replace("http://", "").Replace("https://", "");
+			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=DEL&key={1}", ip, key));
+			request.SendWebRequest();
+
+			while(!request.isDone);
+			
+			if(request.isHttpError || request.isNetworkError)
+				Debug.LogError("PostmanClient :: " + request.error);
+			else
+				Debug.Log(string.Format("PostmanClient :: store delete [ {0} ]", key));
 		}
 #endregion
 	}
