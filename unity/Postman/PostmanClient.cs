@@ -13,6 +13,7 @@ namespace Postman
 		public string serverIp = "127.0.0.1:8800";
 		public bool connectOnStart = true;
 		public bool reconnectOnClose = false;
+		[TextArea] public string secureToken = "";
 		public Action OnConnect;
 		public Action<PublishMessageData> OnMessage;
 		public Action OnClose;
@@ -126,7 +127,11 @@ namespace Postman
 			try
 			{
 				string ip = serverIp.Replace("http://", "").Replace("https://", "");
-				webSocket = new WebSocket(string.Format("ws://{0}/postman", ip));
+				string url = string.Format("ws://{0}/postman", ip);
+				if(secureToken != "")
+					url += "?tkn=" + secureToken;
+
+				webSocket = new WebSocket(url);
 				webSocket.Compression = CompressionMethod.Deflate;
 				webSocket.OnOpen += OnWebSocketOpen;
 				webSocket.OnMessage += OnWebSocketMessage;
@@ -293,7 +298,11 @@ namespace Postman
 		public string StoreGet(string key)
 		{
 			string ip = serverIp.Replace("http://", "").Replace("https://", "");
-			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=GET&key={1}", ip, key));
+			string url = string.Format("http://{0}/postman/store?cmd=GET&key={1}", ip, key);
+			if(secureToken != "")
+				url += "&tkn=" + secureToken;
+
+			UnityWebRequest request = UnityWebRequest.Get(url);
 			request.SendWebRequest();
 
 			while(!request.isDone);
@@ -316,7 +325,11 @@ namespace Postman
 		public void StoreSet(string key, string val)
 		{
 			string ip = serverIp.Replace("http://", "").Replace("https://", "");
-			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=SET&key={1}&val={2}", ip, key, val));
+			string url = string.Format("http://{0}/postman/store?cmd=SET&key={1}&val={2}", ip, key, val);
+			if(secureToken != "")
+				url += "&tkn=" + secureToken;
+
+			UnityWebRequest request = UnityWebRequest.Get(url);
 			request.SendWebRequest();
 
 			while(!request.isDone);
@@ -330,7 +343,11 @@ namespace Postman
 		public bool StoreHasKey(string key)
 		{
 			string ip = serverIp.Replace("http://", "").Replace("https://", "");
-			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=HAS&key={1}", ip, key));
+			string url = string.Format("http://{0}/postman/store?cmd=HAS&key={1}", ip, key);
+			if(secureToken != "")
+				url += "&tkn=" + secureToken;
+				
+			UnityWebRequest request = UnityWebRequest.Get(url);
 			request.SendWebRequest();
 
 			while(!request.isDone);
@@ -355,7 +372,11 @@ namespace Postman
 		public void StoreDelete(string key)
 		{
 			string ip = serverIp.Replace("http://", "").Replace("https://", "");
-			UnityWebRequest request = UnityWebRequest.Get(string.Format("http://{0}/postman/store?cmd=DEL&key={1}", ip, key));
+			string url = string.Format("http://{0}/postman/store?cmd=DEL&key={1}", ip, key);
+			if(secureToken != "")
+				url += "&tkn=" + secureToken;
+
+			UnityWebRequest request = UnityWebRequest.Get(url);
 			request.SendWebRequest();
 
 			while(!request.isDone);

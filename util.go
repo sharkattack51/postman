@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 // Util Functions
 //
 
-func getHostIP() string {
+func GetHostIP() string {
 	ip := "127.0.0.1"
 	if runtime.GOOS == "windows" {
 		host, _ := os.Hostname()
@@ -37,7 +38,7 @@ func getHostIP() string {
 	return ip
 }
 
-func getRemoteIPfromConn(conn *golem.Connection) string {
+func GetRemoteIPfromConn(conn *golem.Connection) string {
 	ip := ""
 	for a, c := range conns {
 		if c == conn {
@@ -46,13 +47,34 @@ func getRemoteIPfromConn(conn *golem.Connection) string {
 		}
 	}
 
-	return splitAddr(ip)
+	return SplitAddr(ip)
 }
 
-func splitAddr(ip string) string {
+func SplitAddr(ip string) string {
 	if strings.Contains(ip, ":") {
 		ip = strings.Split(ip, ":")[0]
 	}
 
 	return ip
+}
+
+func ValidIP4(ip string) bool {
+	ip = strings.Trim(ip, " ")
+
+	re, _ := regexp.Compile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)
+	if re.MatchString(ip) {
+		return true
+	}
+	return false
+}
+
+func IpValidation(addr string) bool {
+	valid := true
+	for _, ip := range ipList {
+		if !strings.Contains(addr, ip) {
+			valid = false
+			break
+		}
+	}
+	return valid
 }

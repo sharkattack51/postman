@@ -8,6 +8,31 @@ import (
 )
 
 //
+// Secure
+//
+
+type SecureMessage struct {
+	RawToken string `json:"token"`
+	RawTkn   string `json:"tkn"`
+}
+
+func (m *SecureMessage) Token() string {
+	if m.RawToken != "" {
+		return m.RawToken
+	} else {
+		return m.RawTkn
+	}
+}
+
+func NewSecureMessage(token string, tkn string) *SecureMessage {
+	msg := &SecureMessage{
+		RawToken: token,
+		RawTkn:   tkn,
+	}
+	return msg
+}
+
+//
 // Subscribe
 //
 

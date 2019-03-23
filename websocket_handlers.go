@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sharkattack51/golem"
 	"github.com/sirupsen/logrus"
@@ -30,7 +32,47 @@ func CreateRouter() *golem.Router {
 }
 
 func Connected(conn *golem.Connection, r *http.Request) {
-	remote := splitAddr(r.RemoteAddr)
+	if !IpValidation(r.RemoteAddr) {
+		log.Println(fmt.Sprintf("> [Worning] remote ip blocked from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "remote ip blocked")
+		j, _ := json.Marshal(msg)
+		conn.Emit("message", string(j))
+
+		go func(c *golem.Connection) {
+			time.Sleep(time.Millisecond * 1)
+			conn.Close()
+		}(conn)
+
+		return
+	}
+
+	if opts.SecureMode {
+		smsg := SecureHandler(r)
+		res, err := Authenticate(secret, smsg.Token(), host)
+		if !res || err != nil {
+			log.Println(fmt.Sprintf("> [Worning] authentication failed from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "connect", "token": smsg.Token(), "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "security error")
+			j, _ := json.Marshal(msg)
+			conn.Emit("message", string(j))
+
+			go func(c *golem.Connection) {
+				time.Sleep(time.Millisecond * 1)
+				conn.Close()
+			}(conn)
+
+			return
+		}
+	}
+
+	remote := SplitAddr(r.RemoteAddr)
 
 	_, exist := conns[r.RemoteAddr]
 	if exist {
@@ -51,7 +93,7 @@ func Ping(conn *golem.Connection) {
 }
 
 func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
-	remote := getRemoteIPfromConn(conn)
+	remote := GetRemoteIPfromConn(conn)
 
 	if msg.Channel() == "" {
 		log.Println(fmt.Sprintf("> [Worning] subscribe channel is empty from %s", remote))
@@ -87,7 +129,7 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 }
 
 func Unsubscribe(conn *golem.Connection, msg *SubscribeMessage) {
-	remote := getRemoteIPfromConn(conn)
+	remote := GetRemoteIPfromConn(conn)
 
 	if msg.Channel() == "" {
 		log.Println(fmt.Sprintf("> [Worning] unsubscribe channel is empty from %s", remote))
@@ -106,7 +148,7 @@ func Unsubscribe(conn *golem.Connection, msg *SubscribeMessage) {
 }
 
 func Publish(conn *golem.Connection, msg *PublishMessage) {
-	remote := getRemoteIPfromConn(conn)
+	remote := GetRemoteIPfromConn(conn)
 
 	if msg.Channel() == "" {
 		log.Println(fmt.Sprintf("> [Worning] publish channel is empty from %s", remote))
@@ -144,7 +186,10 @@ func Status(conn *golem.Connection) {
 }
 
 func Closed(conn *golem.Connection) {
-	remote := getRemoteIPfromConn(conn)
+	remote := GetRemoteIPfromConn(conn)
+	if remote == "" {
+		remote = SplitAddr(conn.GetSocket().RemoteAddr().String())
+	}
 
 	log.Println(fmt.Sprintf("> [Closed] from %s", remote))
 	if logger != nil {
@@ -155,7 +200,7 @@ func Closed(conn *golem.Connection) {
 }
 
 func Store(conn *golem.Connection, msg *StoreMessage) {
-	remote := getRemoteIPfromConn(conn)
+	remote := GetRemoteIPfromConn(conn)
 
 	if msg.Command() != "" {
 		if msg.Key() != "" {

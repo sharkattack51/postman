@@ -16,6 +16,34 @@ import (
 //
 
 func PublishHandler(w http.ResponseWriter, r *http.Request) {
+	if !IpValidation(r.RemoteAddr) {
+		log.Println(fmt.Sprintf("> [Worning] remote ip blocked from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "remote ip blocked")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	if opts.SecureMode {
+		smsg := SecureHandler(r)
+		res, err := Authenticate(secret, smsg.Token(), host)
+		if !res || err != nil {
+			log.Println(fmt.Sprintf("> [Worning] authentication failed from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "publish", "token": smsg.Token(), "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "security error")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+	}
+
 	params := make(map[string]string)
 	query := r.URL.Query()
 	for _, s := range []string{"channel", "ch", "message", "msg", "tag", "extention", "ext"} {
@@ -86,18 +114,112 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
+	if !IpValidation(r.RemoteAddr) {
+		log.Println(fmt.Sprintf("> [Worning] remote ip blocked from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "remote ip blocked")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	if opts.SecureMode {
+		smsg := SecureHandler(r)
+		res, err := Authenticate(secret, smsg.Token(), host)
+		if !res || err != nil {
+			log.Println(fmt.Sprintf("> [Worning] authentication failed from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "status", "token": smsg.Token(), "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "security error")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+	}
+
+	log.Println(fmt.Sprintf("> [Status] get status from %s", r.RemoteAddr))
+	if logger != nil {
+		logger.Log(INFO, "get status", logrus.Fields{"method": "status", "from": r.RemoteAddr})
+	}
+
 	msg := NewStatusMessage(roomMg)
 	j, _ := json.Marshal(msg)
 	fmt.Fprint(w, string(j))
 }
 
 func StatusPpHandler(w http.ResponseWriter, r *http.Request) {
+	if !IpValidation(r.RemoteAddr) {
+		log.Println(fmt.Sprintf("> [Worning] remote ip blocked from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "remote ip blocked")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	if opts.SecureMode {
+		smsg := SecureHandler(r)
+		res, err := Authenticate(secret, smsg.Token(), host)
+		if !res || err != nil {
+			log.Println(fmt.Sprintf("> [Worning] authentication failed from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "status_pp", "token": smsg.Token(), "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "security error")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+	}
+
+	log.Println(fmt.Sprintf("> [Status] get status pp from %s", r.RemoteAddr))
+	if logger != nil {
+		logger.Log(INFO, "get status pp", logrus.Fields{"method": "status_pp", "from": r.RemoteAddr})
+	}
+
 	msg := NewStatusMessage(roomMg)
 	j, _ := json.MarshalIndent(msg, "", "    ")
 	fmt.Fprint(w, string(j))
 }
 
 func StoreHandler(w http.ResponseWriter, r *http.Request) {
+	if !IpValidation(r.RemoteAddr) {
+		log.Println(fmt.Sprintf("> [Worning] remote ip blocked from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "remote ip blocked")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	if opts.SecureMode {
+		smsg := SecureHandler(r)
+		res, err := Authenticate(secret, smsg.Token(), host)
+		if !res || err != nil {
+			log.Println(fmt.Sprintf("> [Worning] authentication failed from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "store", "token": smsg.Token(), "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "security error")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+	}
+
 	params := make(map[string]string)
 	query := r.URL.Query()
 	for _, s := range []string{"command", "cmd", "key", "value", "val"} {
@@ -234,4 +356,39 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 		j, _ := json.Marshal(res)
 		fmt.Fprint(w, string(j))
 	}
+}
+
+func SecureHandler(r *http.Request) *SecureMessage {
+	params := make(map[string]string)
+	query := r.URL.Query()
+	for _, s := range []string{"token", "tkn", "password", "pwd"} {
+		param := query[s]
+		if len(param) > 0 {
+			params[s] = param[0]
+		} else {
+			params[s] = ""
+		}
+	}
+
+	hasQuery := false
+	if params["token"] != "" || params["tkn"] != "" {
+		hasQuery = true
+	}
+
+	// for GET url-param
+	msg := NewSecureMessage(params["token"], params["tkn"])
+
+	// for POST form-data
+	if !hasQuery {
+		r.ParseForm()
+		if len(r.Form) > 0 {
+			if data, ok := r.Form["json"]; ok {
+				if len(data) > 0 {
+					json.Unmarshal([]byte(data[0]), msg)
+				}
+			}
+		}
+	}
+
+	return msg
 }
