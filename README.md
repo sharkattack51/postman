@@ -7,7 +7,7 @@ Application Options:
 - `-c, --chlist`: whitelist for channels
 - `-i, --iplist`: connectable ip_address list
 - `-s, --secure`: secure mode
-- `-g, --generate`: genarate token from environment variable [POSTMAN_SECRET]
+- `-g, --generate`: genarate token from environment variable [SECRET]
 
 Help Options:
 - `-h, --help`: Show this help message
