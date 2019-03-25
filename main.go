@@ -38,7 +38,7 @@ type Options struct {
 	IpAddresses string `short:"i" long:"iplist" description:"connectable ip_address list"`
 	FileApiMode bool   `short:"f" long:"file" description:"enable file server api"`
 	SecureMode  bool   `short:"s" long:"secure" description:"secure mode"`
-	GenToken    bool   `short:"g" long:"generate" description:"genarate token from environment variable [POSTMAN_SECRET]"`
+	GenToken    bool   `short:"g" long:"generate" description:"genarate token from environment variable [SECRET]"`
 }
 
 var (
