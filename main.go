@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	VERSION       = "1.0 alpha"
-	LOG_FILE      = "postman.log"
-	DB_FILE       = "postman.db"
-	TARGET_HEROKU = false
+	VERSION         = "1.0 alpha 2"
+	LOG_FILE        = "postman.log"
+	DB_FILE         = "postman.db"
+	SERVE_FILES_DIR = "serve_files"
+	TARGET_HEROKU   = false
 
 	ENV_SECRET = "SECRET"
 	ENV_PORT   = "PORT"
@@ -35,6 +36,7 @@ type Options struct {
 	LogDir      string `short:"l" long:"log" description:"output log location"`
 	Channels    string `short:"c" long:"chlist" description:"whitelist for channels"`
 	IpAddresses string `short:"i" long:"iplist" description:"connectable ip_address list"`
+	FileApiMode bool   `short:"f" long:"file" description:"enable file server api"`
 	SecureMode  bool   `short:"s" long:"secure" description:"secure mode"`
 	GenToken    bool   `short:"g" long:"generate" description:"genarate token from environment variable [POSTMAN_SECRET]"`
 }
@@ -85,6 +87,7 @@ func main() {
 		opts.Port = os.Getenv(ENV_PORT)
 		opts.Channels = os.Getenv(ENV_CHLIST)
 		opts.IpAddresses = os.Getenv(ENV_IPLIST)
+		opts.FileApiMode = false
 	}
 
 	// whitelist for subscribe channnels
@@ -132,10 +135,10 @@ func main() {
 	fmt.Println("[Unsubscribe]")
 	fmt.Println("<- \"unsubscribe {\"ch\":\"CHANNEL\"}\"")
 	fmt.Println("[Publish]")
-	fmt.Println("<- \"publish {\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\"[,\"tag\":\"TAG\",\"ext\":\"OTHER\"]}\"")
+	fmt.Println("<- \"publish {\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\",[\"tag\":\"TAG\",\"ext\":\"OTHER\"]}\"")
 	if kvsDB != nil {
 		fmt.Println("[Store]")
-		fmt.Println("<- \"store {\"cmd\":\"(GET|SET|HAS|DEL)\",\"key\":\"KEY\"[,\"val\":\"VALUE\"]}\"")
+		fmt.Println("<- \"store {\"cmd\":\"(GET|SET|HAS|DEL)\",\"key\":\"KEY\",[\"val\":\"VALUE\"]}\"")
 	}
 	fmt.Println("")
 	fmt.Println("=== Http API ===")
@@ -145,11 +148,16 @@ func main() {
 	fmt.Println(SecureSprintf("(GET) /status_pp%s", "?tkn=TOKEN"))
 	fmt.Println("[Publish]")
 	fmt.Println(SecureSprintf("(GET) /publish?ch=CHANNEL&msg=MESSAGE[&tag=TAG&ext=OTHER]%s", "&tkn=TOKEN"))
-	fmt.Println(SecureSprintf("(POST) /publish <- \"json={\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\"[,\"tag\":\"TAG\",\"ext\":\"OTHER\"]%s}\"", ",\"tkn\":\"TOKEN\""))
+	fmt.Println(SecureSprintf("(POST) /publish <- json={\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\",[\"tag\":\"TAG\",\"ext\":\"OTHER\"]%s}", ",\"tkn\":\"TOKEN\""))
 	if kvsDB != nil {
 		fmt.Println("[Store]")
 		fmt.Println(SecureSprintf("(GET) /store?cmd=(GET|SET|HAS|DEL)&key=KEY[&val=VALUE]%s", "&tkn=TOKEN"))
-		fmt.Println(SecureSprintf("(POST) /store <- \"json={\"cmd\":\"(GET|SET|HAS|DEL)\",\"key\":\"KEY\"[,\"val\":\"VALUE\"]%s}\"", ",\"tkn\":\"TOKEN\""))
+		fmt.Println(SecureSprintf("(POST) /store <- json={\"cmd\":\"(GET|SET|HAS|DEL)\",\"key\":\"KEY\",[\"val\":\"VALUE\"]%s}", ",\"tkn\":\"TOKEN\""))
+	}
+	if opts.FileApiMode {
+		fmt.Println("[File]")
+		fmt.Println(SecureSprintf("(GET) /file?name=FILE_NAME%s", "&tkn=TOKEN"))
+		fmt.Println(SecureSprintf("(POST) /file <- file=FILE_BINARY %s", "json={\"tkn\":\"TOKEN\"}"))
 	}
 	fmt.Println("===================================================")
 	fmt.Println("")
@@ -168,6 +176,7 @@ func main() {
 	http.HandleFunc("/postman/status", StatusHandler)
 	http.HandleFunc("/postman/status_pp", StatusPpHandler)
 	http.HandleFunc("/postman/store", StoreHandler)
+	http.HandleFunc("/postman/file", FileHandler)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {

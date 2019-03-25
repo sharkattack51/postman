@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -391,4 +393,163 @@ func SecureHandler(r *http.Request) *SecureMessage {
 	}
 
 	return msg
+}
+
+func FileHandler(w http.ResponseWriter, r *http.Request) {
+	if !IpValidation(r.RemoteAddr) {
+		log.Println(fmt.Sprintf("> [Worning] remote ip blocked from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "remote ip blocked")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	if opts.SecureMode {
+		smsg := SecureHandler(r)
+		res, err := Authenticate(secret, smsg.Token(), host)
+		if !res || err != nil {
+			log.Println(fmt.Sprintf("> [Worning] authentication failed from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "store", "token": smsg.Token(), "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "security error")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+	}
+
+	if !opts.FileApiMode {
+		log.Println(fmt.Sprintf("> [Worning] file server api is disable from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "file server api is disable", logrus.Fields{"method": "file", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "file server api is disable")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	if r.Method == "POST" {
+		formFile, header, err := r.FormFile("file")
+		defer formFile.Close()
+
+		if err != nil {
+			log.Println(fmt.Sprintf("> [Worning] no form file data from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "no form file data", logrus.Fields{"method": "file post", "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "no form file data")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+
+		_, err = os.Stat(SERVE_FILES_DIR)
+		exist := !os.IsNotExist(err)
+		if !exist {
+			err = os.Mkdir(SERVE_FILES_DIR, 0777)
+			if err != nil {
+				log.Println(fmt.Sprintf("> [Worning] could not create \"%s\" directory from %s", SERVE_FILES_DIR, r.RemoteAddr))
+				if logger != nil {
+					logger.Log(WARN, fmt.Sprintf("could not create \"%s\" directory", SERVE_FILES_DIR), logrus.Fields{"method": "file post", "from": r.RemoteAddr})
+				}
+
+				msg := NewResultMessage("fail", fmt.Sprintf("could not create \"%s\" directory", SERVE_FILES_DIR))
+				j, _ := json.Marshal(msg)
+				fmt.Fprint(w, string(j))
+				return
+			}
+		}
+
+		path := filepath.Join(SERVE_FILES_DIR, header.Filename)
+		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			log.Println(fmt.Sprintf("> [Worning] could not open file \"%s\" from %s", header.Filename, r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "could not open file", logrus.Fields{"method": "file post", "file": header.Filename, "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", fmt.Sprintf("could not open file \"%s\"", header.Filename))
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+		defer file.Close()
+
+		data := make([]byte, 1024)
+		offset := int64(0)
+		for {
+			n, err := formFile.Read(data)
+			if n == 0 {
+				break
+			}
+			if err != nil {
+				break
+			}
+
+			// write file
+			file.WriteAt(data, offset)
+			offset += int64(n)
+		}
+
+		log.Println(fmt.Sprintf("> [File] new file posted \"%s\" from %s", header.Filename, r.RemoteAddr))
+		if logger != nil {
+			logger.Log(INFO, fmt.Sprintf("new file posted"), logrus.Fields{"method": "file post", "file": header.Filename, "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("success", "")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+
+	} else if r.Method == "GET" {
+		params := make(map[string]string)
+		query := r.URL.Query()
+		for _, s := range []string{"name"} {
+			param := query[s]
+			if len(param) > 0 {
+				params[s] = param[0]
+			} else {
+				params[s] = ""
+			}
+		}
+
+		if params["name"] == "" {
+			log.Println(fmt.Sprintf("> [Worning] file name is empty from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "file name is empty", logrus.Fields{"method": "file get", "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "file name is empty")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+
+		path := filepath.Join(SERVE_FILES_DIR, params["name"])
+
+		_, err := os.Stat(path)
+		exist := !os.IsNotExist(err)
+		if !exist {
+			log.Println(fmt.Sprintf("> [Worning] file not found \"%s\" from %s", params["name"], r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "file not found", logrus.Fields{"method": "file get", "name": params["name"], "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", fmt.Sprintf("file not found \"%s\"", params["name"]))
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+
+		// return file
+		http.ServeFile(w, r, path)
+	}
 }

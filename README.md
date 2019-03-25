@@ -6,7 +6,8 @@ Application Options:
 - `-l, --log`: output log location
 - `-c, --chlist`: whitelist for channels
 - `-i, --iplist`: connectable ip_address list
-- `-s, --secure`: secure mode
+- `-f, --file`: enable file server api
+- `-s, --secure`: enable secure mode
 - `-g, --generate`: genarate token from environment variable [SECRET]
 
 Help Options:
@@ -36,10 +37,13 @@ http://XXX.XXX.XXX.XXX:8800/postman
   - (GET) [/status_pp]()
 - `Publish`
   - (GET) [/publish?ch=CHANNEL&msg=MESSAGE[&tag=TAG&ext=OTHER]]()
-  - (POST) [/publish]() <- "json={"ch": "CHANNEL", "msg": "MESSAGE", ["tag": "TAG", "ext": "OTHER"]}"
+  - (POST) [/publish]() <- json={"ch": "CHANNEL", "msg": "MESSAGE", ["tag": "TAG", "ext": "OTHER"]}
 - `Store`
   - (GET) [/store?cmd=(GET|SET|HAS|DEL)&key=KEY[&val=VALUE]]()
-  - (POST) [/store]() <- "json={"cmd": "(GET|SET|HAS|DEL)", "key": "KEY", ["val": "VALUE"]}"
+  - (POST) [/store]() <- json={"cmd": "(GET|SET|HAS|DEL)", "key": "KEY", ["val": "VALUE"]}
+- `File`
+  - (GET) [/file?name=FILE_NAME]()
+  - (POST) [/file]() <- file=FILE_BINARY
 
 ### Client Library
 
