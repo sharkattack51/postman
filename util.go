@@ -78,3 +78,8 @@ func IpValidation(addr string) bool {
 	}
 	return valid
 }
+
+func IsExist(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}

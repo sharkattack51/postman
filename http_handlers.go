@@ -452,9 +452,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = os.Stat(SERVE_FILES_DIR)
-		exist := !os.IsNotExist(err)
-		if !exist {
+		if !IsExist(SERVE_FILES_DIR) {
 			err = os.Mkdir(SERVE_FILES_DIR, 0777)
 			if err != nil {
 				log.Println(fmt.Sprintf("> [Worning] could not create \"%s\" directory from %s", SERVE_FILES_DIR, r.RemoteAddr))
@@ -535,9 +533,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 
 		path := filepath.Join(SERVE_FILES_DIR, params["name"])
 
-		_, err := os.Stat(path)
-		exist := !os.IsNotExist(err)
-		if !exist {
+		if !IsExist(path) {
 			log.Println(fmt.Sprintf("> [Worning] file not found \"%s\" from %s", params["name"], r.RemoteAddr))
 			if logger != nil {
 				logger.Log(WARN, "file not found", logrus.Fields{"method": "file get", "name": params["name"], "from": r.RemoteAddr})

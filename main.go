@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -19,10 +20,11 @@ import (
 )
 
 const (
-	VERSION         = "1.0 alpha 2"
+	VERSION         = "1.0 alpha 3"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
+	LOCK_FILE       = "postman.lock"
 	TARGET_HEROKU   = false
 
 	ENV_SECRET = "SECRET"
@@ -42,6 +44,7 @@ type Options struct {
 }
 
 var (
+	srv       *http.Server
 	host      string
 	roomMg    *golem.RoomManager
 	conns     map[string]*golem.Connection
@@ -58,6 +61,21 @@ var (
 //
 
 func main() {
+	// don't start multiple instance
+	if !TARGET_HEROKU {
+		if IsExist(LOCK_FILE) {
+			log.Println("> [Worning] don't start multiple instance")
+			os.Exit(1)
+		} else {
+			// for windows
+			RegisterOSHandler(GracefulShutdown)
+
+			// lock
+			ioutil.WriteFile(LOCK_FILE, []byte(""), 0644)
+			defer os.Remove(LOCK_FILE)
+		}
+	}
+
 	host = GetHostIP()
 	roomMg = golem.NewRoomManager()
 	conns = make(map[string]*golem.Connection)
@@ -166,7 +184,7 @@ func main() {
 		logger.Log(INFO, "postman start", logrus.Fields{"host": host, "port": opts.Port})
 	}
 
-	srv := &http.Server{Addr: ":" + opts.Port}
+	srv = &http.Server{Addr: ":" + opts.Port}
 
 	// websocket routing
 	http.HandleFunc("/postman", CreateRouter().Handler())
@@ -185,11 +203,20 @@ func main() {
 	}()
 
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGTERM, os.Interrupt)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	defer signal.Stop(sigCh)
 	<-sigCh // blocking
 
 	// graceful shutdown
+	GracefulShutdown()
+}
+
+func GracefulShutdown() {
+	// unlock
+	if !TARGET_HEROKU {
+		os.Remove(LOCK_FILE)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {

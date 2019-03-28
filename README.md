@@ -53,6 +53,10 @@ http://XXX.XXX.XXX.XXX:8800/postman
     - [Json.NET for Unity](https://assetstore.unity.com/packages/tools/input-management/json-net-for-unity-11347)
 - `js`
 
+### Build Tags for Windows
+
+`$ go build -tags windows ./...` others `$ go build ./...`
+
 ### Using on Heroku
 
 change code in `main.go`.
@@ -60,4 +64,4 @@ change code in `main.go`.
 TARGET_HEROKU = true
 ```
 
-and `go build ./...`
+and `$ git push heroku master`
