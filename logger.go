@@ -27,6 +27,7 @@ func NewLogger(logDir string, logFile string) *Logger {
 		rotatelogs.WithMaxAge(time.Hour*24*365*10),
 	)
 	if err != nil {
+		Unlock()
 		log.Fatalln(err)
 	}
 	lg := &Logger{lgrs: logrus.New()}

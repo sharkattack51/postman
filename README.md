@@ -7,6 +7,7 @@ Application Options:
 - `-c, --chlist`: whitelist for channels
 - `-i, --iplist`: connectable ip_address list
 - `-f, --file`: enable file server api
+- `-u, --plugin`: enable plugin api
 - `-s, --secure`: enable secure mode
 - `-g, --generate`: genarate token from environment variable [SECRET]
 
@@ -25,8 +26,6 @@ Help Options:
   - <- "unsubscribe {"ch": "CHANNEL"}"
 - `Publish`
   - <- "publish {"ch": "CHANNEL", "msg": "MESSAGE", ["tag": "TAG", "ext": "OTHER"]}"
-- `Store`
-  - <- "store {"cmd": "(GET|SET|HAS|DEL)", "key": "KEY", ["val": "VALUE"]}"
 
 ### Http API
 
@@ -44,6 +43,10 @@ http://XXX.XXX.XXX.XXX:8800/postman
 - `File`
   - (GET) [/file?name=FILE_NAME]()
   - (POST) [/file]() <- file=FILE_BINARY
+- `Plugin`
+  - (GET) [/plugin?cmd=COMMAND]()
+  - (POST) [/plugin]() <- json={"cmd": "COMMAND"}
+  - see `./plugin/plugin.json`
 
 ### Client Library
 

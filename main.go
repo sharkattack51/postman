@@ -20,10 +20,12 @@ import (
 )
 
 const (
-	VERSION         = "1.0 alpha 3"
+	VERSION         = "1.0 alpha 4"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
+	PLUGIN_DIR      = "plugin"
+	PLUGIN_JSON     = "plugin.json"
 	LOCK_FILE       = "postman.lock"
 	TARGET_HEROKU   = false
 
@@ -34,13 +36,14 @@ const (
 )
 
 type Options struct {
-	Port        string `short:"p" long:"port" default:"8800" description:"listen port number"`
-	LogDir      string `short:"l" long:"log" description:"output log location"`
-	Channels    string `short:"c" long:"chlist" description:"whitelist for channels"`
-	IpAddresses string `short:"i" long:"iplist" description:"connectable ip_address list"`
-	FileApiMode bool   `short:"f" long:"file" description:"enable file server api"`
-	SecureMode  bool   `short:"s" long:"secure" description:"secure mode"`
-	GenToken    bool   `short:"g" long:"generate" description:"genarate token from environment variable [SECRET]"`
+	Port         string `short:"p" long:"port" default:"8800" description:"listen port number"`
+	LogDir       string `short:"l" long:"log" description:"output log location"`
+	Channels     string `short:"c" long:"chlist" description:"whitelist for channels"`
+	IpAddresses  string `short:"i" long:"iplist" description:"connectable ip_address list"`
+	UseFileApi   bool   `short:"f" long:"file" description:"enable file server api"`
+	UsePluginApi bool   `short:"u" long:"plugin" description:"enable plugin api"`
+	SecureMode   bool   `short:"s" long:"secure" description:"secure mode"`
+	GenToken     bool   `short:"g" long:"generate" description:"genarate token from environment variable [SECRET]"`
 }
 
 var (
@@ -80,21 +83,25 @@ func main() {
 	roomMg = golem.NewRoomManager()
 	conns = make(map[string]*golem.Connection)
 
+	// option flags
 	_, err := flags.Parse(&opts)
 	if err != nil {
-		log.Fatal(err)
+		Unlock()
+		log.Fatalln(err)
 	}
 
 	// generate token mode
 	secret = os.Getenv(ENV_SECRET)
 	if opts.GenToken {
 		if secret == "" {
-			log.Fatal(errors.New("environment variable [" + ENV_SECRET + "] is empty"))
+			Unlock()
+			log.Fatalln(errors.New("environment variable [" + ENV_SECRET + "] is empty"))
 		}
 
 		token, err := GenerateToken(secret, host)
 		if err != nil {
-			log.Fatal(err)
+			Unlock()
+			log.Fatalln(err)
 		}
 		fmt.Println("genarated token: " + token)
 		os.Exit(0)
@@ -105,7 +112,8 @@ func main() {
 		opts.Port = os.Getenv(ENV_PORT)
 		opts.Channels = os.Getenv(ENV_CHLIST)
 		opts.IpAddresses = os.Getenv(ENV_IPLIST)
-		opts.FileApiMode = false
+		opts.UseFileApi = false
+		opts.UsePluginApi = false
 	}
 
 	// whitelist for subscribe channnels
@@ -134,7 +142,8 @@ func main() {
 		var err error
 		kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
 		if err != nil {
-			log.Fatal(err)
+			Unlock()
+			log.Fatalln(err)
 		}
 		defer kvsDB.Close()
 	}
@@ -154,10 +163,6 @@ func main() {
 	fmt.Println("<- \"unsubscribe {\"ch\":\"CHANNEL\"}\"")
 	fmt.Println("[Publish]")
 	fmt.Println("<- \"publish {\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\",[\"tag\":\"TAG\",\"ext\":\"OTHER\"]}\"")
-	if kvsDB != nil {
-		fmt.Println("[Store]")
-		fmt.Println("<- \"store {\"cmd\":\"(GET|SET|HAS|DEL)\",\"key\":\"KEY\",[\"val\":\"VALUE\"]}\"")
-	}
 	fmt.Println("")
 	fmt.Println("=== Http API ===")
 	fmt.Println(fmt.Sprintf("http://%s:%s/postman", host, opts.Port))
@@ -172,10 +177,15 @@ func main() {
 		fmt.Println(SecureSprintf("(GET) /store?cmd=(GET|SET|HAS|DEL)&key=KEY[&val=VALUE]%s", "&tkn=TOKEN"))
 		fmt.Println(SecureSprintf("(POST) /store <- json={\"cmd\":\"(GET|SET|HAS|DEL)\",\"key\":\"KEY\",[\"val\":\"VALUE\"]%s}", ",\"tkn\":\"TOKEN\""))
 	}
-	if opts.FileApiMode {
+	if opts.UseFileApi {
 		fmt.Println("[File]")
 		fmt.Println(SecureSprintf("(GET) /file?name=FILE_NAME%s", "&tkn=TOKEN"))
 		fmt.Println(SecureSprintf("(POST) /file <- file=FILE_BINARY %s", "json={\"tkn\":\"TOKEN\"}"))
+	}
+	if opts.UsePluginApi {
+		fmt.Println("[Plugin]")
+		fmt.Println(SecureSprintf("(GET) /plugin?cmd=COMMAND%s", "&tkn=TOKEN"))
+		fmt.Println(SecureSprintf("(POST) /plugin <- json={\"cmd\":COMMAND%s}", ",\"tkn\":\"TOKEN\""))
 	}
 	fmt.Println("===================================================")
 	fmt.Println("")
@@ -195,10 +205,12 @@ func main() {
 	http.HandleFunc("/postman/status_pp", StatusPpHandler)
 	http.HandleFunc("/postman/store", StoreHandler)
 	http.HandleFunc("/postman/file", FileHandler)
+	http.HandleFunc("/postman/plugin", PluginHandler)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Fatal(err)
+			Unlock()
+			log.Fatalln(err)
 		}
 	}()
 
@@ -220,7 +232,8 @@ func GracefulShutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+		Unlock()
+		log.Fatalln(err)
 	}
 }
 
@@ -229,5 +242,11 @@ func SecureSprintf(s string, ss string) string {
 		return fmt.Sprintf(s, ss)
 	} else {
 		return fmt.Sprintf(s, "")
+	}
+}
+
+func Unlock() {
+	if IsExist(LOCK_FILE) {
+		os.Remove(LOCK_FILE)
 	}
 }

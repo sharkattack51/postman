@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +24,6 @@ func CreateRouter() *golem.Router {
 	router.On("unsubscribe", Unsubscribe)
 	router.On("publish", Publish)
 	router.On("status", Status)
-	router.On("store", Store)
 	router.OnClose(Closed)
 
 	return router
@@ -197,103 +195,4 @@ func Closed(conn *golem.Connection) {
 	}
 
 	roomMg.LeaveAll(conn)
-}
-
-func Store(conn *golem.Connection, msg *StoreMessage) {
-	remote := GetRemoteIPfromConn(conn)
-
-	if msg.Command() != "" {
-		if msg.Key() != "" {
-			switch strings.ToLower(msg.Command()) {
-			case "get":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s from %s", msg.Command(), msg.Key(), remote))
-				if logger != nil {
-					logger.Log(INFO, "request store get", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "from": remote})
-				}
-
-				v, err := StoreGet(kvsDB, msg)
-				if err != nil {
-					res := NewResultMessage("", "") // Key無しの場合
-					conn.Emit("message", &res)
-					return
-				}
-
-				res := NewResultMessage(v, "")
-				conn.Emit("message", &res)
-
-			case "set":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s val:%s from %s", msg.Command(), msg.Key(), msg.Value(), remote))
-				if logger != nil {
-					logger.Log(INFO, "request store set", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "val": msg.Value(), "from": remote})
-				}
-
-				err := StoreSet(kvsDB, msg)
-				if err != nil {
-					res := NewResultMessage("fail", err.Error())
-					conn.Emit("message", &res)
-					return
-				}
-
-				res := NewResultMessage("success", "")
-				conn.Emit("message", &res)
-
-			case "has":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s from %s", msg.Command(), msg.Key(), remote))
-				if logger != nil {
-					logger.Log(INFO, "request store haskey", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "from": remote})
-				}
-
-				b, err := StoreHas(kvsDB, msg)
-				if err != nil {
-					res := NewResultMessage("fail", err.Error())
-					conn.Emit("message", &res)
-					return
-				}
-
-				res := NewResultMessage(strconv.FormatBool(b), "")
-				conn.Emit("message", &res)
-
-			case "del":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s from %s", msg.Command(), msg.Key(), remote))
-				if logger != nil {
-					logger.Log(INFO, "request store delete", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "from": remote})
-				}
-
-				err := StoreDelete(kvsDB, msg)
-				if err != nil {
-					res := NewResultMessage("fail", err.Error())
-					conn.Emit("message", &res)
-					return
-				}
-
-				res := NewResultMessage("success", "")
-				conn.Emit("message", &res)
-
-			default:
-				log.Println(fmt.Sprintf("> [Worning] store command nou found from %s", remote))
-				if logger != nil {
-					logger.Log(WARN, "command not found", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "value": msg.Value(), "from": remote})
-				}
-
-				res := NewResultMessage("fail", "store command not found")
-				conn.Emit("message", &res)
-			}
-		} else {
-			log.Println(fmt.Sprintf("> [Worning] store key is empty from %s", remote))
-			if logger != nil {
-				logger.Log(WARN, "store key is empty", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "value": msg.Value(), "from": remote})
-			}
-
-			res := NewResultMessage("fail", "store key is empty")
-			conn.Emit("message", &res)
-		}
-	} else {
-		log.Println(fmt.Sprintf("> [Worning] store command is empty from %s", remote))
-		if logger != nil {
-			logger.Log(WARN, "store command is empty", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "value": msg.Value(), "from": remote})
-		}
-
-		res := NewResultMessage("fail", "store command is empty")
-		conn.Emit("message", &res)
-	}
 }

@@ -229,3 +229,28 @@ func NewResultMessage(result string, err string) *ResultMessage {
 	}
 	return msg
 }
+
+//
+// Plugin
+//
+
+type PluginMessage struct {
+	RawCommand string `json:"command"`
+	RawCmd     string `json:"cmd"`
+}
+
+func (m *PluginMessage) Command() string {
+	if m.RawCommand != "" {
+		return m.RawCommand
+	} else {
+		return m.RawCmd
+	}
+}
+
+func NewPluginMessage(command string, cmd string) *PluginMessage {
+	msg := &PluginMessage{
+		RawCommand: command,
+		RawCmd:     cmd,
+	}
+	return msg
+}

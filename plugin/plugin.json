@@ -1,0 +1,16 @@
+{
+    "plugins": {
+        "example_python": {
+            "proc": "python",
+            "args": ["./plugin/hello.py", "this is postman plugin !!!"]
+        },
+        "example_cli": {
+            "proc": "ls",
+            "args": ["-a"]
+        },
+        "example_bat": {
+            "proc": ".\\plugin\\hello.bat",
+            "args": ["hello windows !!!"]
+        }
+    }
+}

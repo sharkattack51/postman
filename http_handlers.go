@@ -424,7 +424,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !opts.FileApiMode {
+	if !opts.UseFileApi {
 		log.Println(fmt.Sprintf("> [Worning] file server api is disable from %s", r.RemoteAddr))
 		if logger != nil {
 			logger.Log(WARN, "file server api is disable", logrus.Fields{"method": "file", "from": r.RemoteAddr})
@@ -545,7 +545,127 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		log.Println(fmt.Sprintf("> [File] serve access \"%s\" from %s", params["name"], r.RemoteAddr))
+		if logger != nil {
+			logger.Log(INFO, fmt.Sprintf("file served"), logrus.Fields{"method": "file get", "file": params["name"], "from": r.RemoteAddr})
+		}
+
 		// return file
 		http.ServeFile(w, r, path)
+	}
+}
+
+func PluginHandler(w http.ResponseWriter, r *http.Request) {
+	if !IpValidation(r.RemoteAddr) {
+		log.Println(fmt.Sprintf("> [Worning] remote ip blocked from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "remote ip blocked")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	if opts.SecureMode {
+		smsg := SecureHandler(r)
+		res, err := Authenticate(secret, smsg.Token(), host)
+		if !res || err != nil {
+			log.Println(fmt.Sprintf("> [Worning] authentication failed from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "store", "token": smsg.Token(), "from": r.RemoteAddr})
+			}
+
+			msg := NewResultMessage("fail", "security error")
+			j, _ := json.Marshal(msg)
+			fmt.Fprint(w, string(j))
+			return
+		}
+	}
+
+	if !opts.UsePluginApi {
+		log.Println(fmt.Sprintf("> [Worning] plugin api is disable from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "plugin api is disable", logrus.Fields{"method": "plugin", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "plugin api is disable")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
+	params := make(map[string]string)
+	query := r.URL.Query()
+	for _, s := range []string{"command", "cmd"} {
+		param := query[s]
+		if len(param) > 0 {
+			params[s] = param[0]
+		} else {
+			params[s] = ""
+		}
+	}
+
+	hasQuery := false
+	if params["command"] != "" || params["cmd"] != "" {
+		hasQuery = true
+	}
+
+	// for GET url-param
+	msg := NewPluginMessage(params["command"], params["cmd"])
+
+	// for POST form-data
+	if !hasQuery {
+		r.ParseForm()
+		if len(r.Form) > 0 {
+			if data, ok := r.Form["json"]; ok {
+				if len(data) > 0 {
+					json.Unmarshal([]byte(data[0]), msg)
+				}
+			}
+		}
+	}
+
+	if msg.Command() != "" {
+		p, err := LoadPlugin()
+		if err != nil {
+			log.Println(fmt.Sprintf("> [Worning] plugin can't loaded from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "plugin can't loaded", logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
+			}
+
+			res := NewResultMessage("fail", "plugin can't loaded")
+			j, _ := json.Marshal(res)
+			fmt.Fprint(w, string(j))
+		}
+
+		if proc, ok := p.Plugins[msg.Command()]; ok {
+			log.Println(fmt.Sprintf("> [Plugin] call plugin \"%s\" from %s", msg.Command(), r.RemoteAddr))
+			if logger != nil {
+				logger.Log(INFO, fmt.Sprintf("call plugin"), logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
+			}
+
+			ret := ExecPlugin(proc.Proc, proc.Args)
+			fmt.Fprint(w, ret)
+		} else {
+			log.Println(fmt.Sprintf("> [Worning] plugin command not found from %s", r.RemoteAddr))
+			if logger != nil {
+				logger.Log(WARN, "plugin command not found", logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
+			}
+
+			res := NewResultMessage("fail", "plugin command not found")
+			j, _ := json.Marshal(res)
+			fmt.Fprint(w, string(j))
+		}
+	} else {
+		log.Println(fmt.Sprintf("> [Worning] plugin command is empty from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "plugin command is empty", logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
+		}
+
+		res := NewResultMessage("fail", "plugin command is empty")
+		j, _ := json.Marshal(res)
+		fmt.Fprint(w, string(j))
 	}
 }
