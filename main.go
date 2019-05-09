@@ -85,9 +85,9 @@ func main() {
 
 	// option flags
 	_, err := flags.Parse(&opts)
-	if err != nil {
+	if err != nil { // [help] also passes
 		Unlock()
-		log.Fatalln(err)
+		os.Exit(0)
 	}
 
 	// generate token mode
