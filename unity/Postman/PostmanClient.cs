@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine.Networking;
 using UnityEngine;
+using UnityEditor;
 using WebSocketSharp;
 using Newtonsoft.Json;
 
@@ -44,6 +45,15 @@ namespace Postman
 
 		void Start()
 		{
+#if UNITY_EDITOR && UNITY_2018_3_OR_NEWER
+			if(PlayerSettings.scriptingRuntimeVersion != ScriptingRuntimeVersion.Latest)
+				Debug.LogError("PostmanClient :: PlayerSettings.scriptingRuntimeVersion is Lagacy");
+
+			BuildTargetGroup target = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
+			if(PlayerSettings.GetApiCompatibilityLevel(target) != ApiCompatibilityLevel.NET_4_6)
+				Debug.LogError("PostmanClient :: PlayerSettings.ApiCompatibilityLevel is Low");
+#endif
+
 			if(connectOnStart)
 				Connect(true);
 		}
