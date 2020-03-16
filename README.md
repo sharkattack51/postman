@@ -10,6 +10,7 @@ Application Options:
 - `-u, --plugin`: enable plugin api
 - `-s, --secure`: enable secure mode
 - `-g, --generate`: genarate token from environment variable [SECRET]
+- `-m, --multi`: multiple instance check
 
 Help Options:
 - `-h, --help`: Show this help message

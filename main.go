@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	VERSION         = "1.0 alpha 4"
+	VERSION         = "1.0 alpha 5"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -36,14 +36,15 @@ const (
 )
 
 type Options struct {
-	Port         string `short:"p" long:"port" default:"8800" description:"listen port number"`
-	LogDir       string `short:"l" long:"log" description:"output log location"`
-	Channels     string `short:"c" long:"chlist" description:"whitelist for channels"`
-	IpAddresses  string `short:"i" long:"iplist" description:"connectable ip_address list"`
-	UseFileApi   bool   `short:"f" long:"file" description:"enable file server api"`
-	UsePluginApi bool   `short:"u" long:"plugin" description:"enable plugin api"`
-	SecureMode   bool   `short:"s" long:"secure" description:"secure mode"`
-	GenToken     bool   `short:"g" long:"generate" description:"genarate token from environment variable [SECRET]"`
+	Port               string `short:"p" long:"port" default:"8800" description:"listen port number"`
+	LogDir             string `short:"l" long:"log" description:"output log location"`
+	Channels           string `short:"c" long:"chlist" description:"whitelist for channels"`
+	IpAddresses        string `short:"i" long:"iplist" description:"connectable ip_address list"`
+	UseFileApi         bool   `short:"f" long:"file" description:"enable file server api"`
+	UsePluginApi       bool   `short:"u" long:"plugin" description:"enable plugin api"`
+	SecureMode         bool   `short:"s" long:"secure" description:"secure mode"`
+	GenToken           bool   `short:"g" long:"generate" description:"genarate token from environment variable [SECRET]"`
+	MultiInstanceCheck bool   `short:"m" long:"multi" description:"multiple instance check"`
 }
 
 var (
@@ -64,21 +65,6 @@ var (
 //
 
 func main() {
-	// don't start multiple instance
-	if !TARGET_HEROKU {
-		if IsExist(LOCK_FILE) {
-			log.Println("> [Worning] don't start multiple instance")
-			os.Exit(1)
-		} else {
-			// for windows
-			RegisterOSHandler(GracefulShutdown)
-
-			// lock
-			ioutil.WriteFile(LOCK_FILE, []byte(""), 0644)
-			defer os.Remove(LOCK_FILE)
-		}
-	}
-
 	host = GetHostIP()
 	roomMg = golem.NewRoomManager()
 	conns = make(map[string]*golem.Connection)
@@ -88,6 +74,22 @@ func main() {
 	if err != nil { // [help] also passes
 		Unlock()
 		os.Exit(0)
+	}
+
+	// don't start multiple instance
+	if !TARGET_HEROKU {
+		if opts.MultiInstanceCheck && IsExist(LOCK_FILE) {
+			log.Println("> [Worning] don't start multiple instance")
+			os.Exit(1)
+		} else {
+			// for windows
+			RegisterOSHandler(GracefulShutdown)
+
+			// generate lock file
+			Unlock()
+			ioutil.WriteFile(LOCK_FILE, []byte(""), 0644)
+			defer Unlock()
+		}
 	}
 
 	// generate token mode
@@ -226,7 +228,7 @@ func main() {
 func GracefulShutdown() {
 	// unlock
 	if !TARGET_HEROKU {
-		os.Remove(LOCK_FILE)
+		Unlock()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
