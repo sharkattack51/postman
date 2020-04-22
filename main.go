@@ -79,7 +79,7 @@ func main() {
 	// don't start multiple instance
 	if !TARGET_HEROKU {
 		if opts.MultiInstanceCheck && IsExist(LOCK_FILE) {
-			log.Println("> [Worning] don't start multiple instance")
+			log.Println("> [Warning] don't start multiple instance")
 			os.Exit(1)
 		} else {
 			// for windows
