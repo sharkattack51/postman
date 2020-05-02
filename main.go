@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -20,13 +21,12 @@ import (
 )
 
 const (
-	VERSION         = "1.0 alpha 5"
+	VERSION         = "1.0 alpha 6"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
 	PLUGIN_DIR      = "plugin"
 	PLUGIN_JSON     = "plugin.json"
-	LOCK_FILE       = "postman.lock"
 	TARGET_HEROKU   = false
 
 	ENV_SECRET = "SECRET"
@@ -36,15 +36,14 @@ const (
 )
 
 type Options struct {
-	Port               string `short:"p" long:"port" default:"8800" description:"listen port number"`
-	LogDir             string `short:"l" long:"log" description:"output log location"`
-	Channels           string `short:"c" long:"chlist" description:"whitelist for channels"`
-	IpAddresses        string `short:"i" long:"iplist" description:"connectable ip_address list"`
-	UseFileApi         bool   `short:"f" long:"file" description:"enable file server api"`
-	UsePluginApi       bool   `short:"u" long:"plugin" description:"enable plugin api"`
-	SecureMode         bool   `short:"s" long:"secure" description:"secure mode"`
-	GenToken           bool   `short:"g" long:"generate" description:"genarate token from environment variable [SECRET]"`
-	MultiInstanceCheck bool   `short:"m" long:"multi" description:"multiple instance check"`
+	Port         string `short:"p" long:"port" default:"8800" description:"listen port number"`
+	LogDir       string `short:"l" long:"log" description:"output log location"`
+	Channels     string `short:"c" long:"chlist" description:"whitelist for channels"`
+	IpAddresses  string `short:"i" long:"iplist" description:"connectable ip_address list"`
+	UseFileApi   bool   `short:"f" long:"file" description:"enable file server api"`
+	UsePluginApi bool   `short:"u" long:"plugin" description:"enable plugin api"`
+	SecureMode   bool   `short:"s" long:"secure" description:"secure mode"`
+	GenToken     bool   `short:"g" long:"generate" description:"genarate token from environment variable [SECRET]"`
 }
 
 var (
@@ -65,6 +64,11 @@ var (
 //
 
 func main() {
+	if !TARGET_HEROKU && runtime.GOOS == "windows" {
+		// graceful shutdown for windows
+		RegisterOSHandler(GracefulShutdown)
+	}
+
 	host = GetHostIP()
 	roomMg = golem.NewRoomManager()
 	conns = make(map[string]*golem.Connection)
@@ -72,40 +76,6 @@ func main() {
 	// option flags
 	_, err := flags.Parse(&opts)
 	if err != nil { // [help] also passes
-		Unlock()
-		os.Exit(0)
-	}
-
-	// don't start multiple instance
-	if !TARGET_HEROKU {
-		if opts.MultiInstanceCheck && IsExist(LOCK_FILE) {
-			log.Println("> [Warning] don't start multiple instance")
-			os.Exit(1)
-		} else {
-			// for windows
-			RegisterOSHandler(GracefulShutdown)
-
-			// generate lock file
-			Unlock()
-			ioutil.WriteFile(LOCK_FILE, []byte(""), 0644)
-			defer Unlock()
-		}
-	}
-
-	// generate token mode
-	secret = os.Getenv(ENV_SECRET)
-	if opts.GenToken {
-		if secret == "" {
-			Unlock()
-			log.Fatalln(errors.New("environment variable [" + ENV_SECRET + "] is empty"))
-		}
-
-		token, err := GenerateToken(secret, host)
-		if err != nil {
-			Unlock()
-			log.Fatalln(err)
-		}
-		fmt.Println("genarated token: " + token)
 		os.Exit(0)
 	}
 
@@ -116,6 +86,29 @@ func main() {
 		opts.IpAddresses = os.Getenv(ENV_IPLIST)
 		opts.UseFileApi = false
 		opts.UsePluginApi = false
+	}
+
+	// don't start multiple instance
+	l, err := net.Listen("tcp", ":"+opts.Port)
+	if err != nil {
+		log.Println("> [Warning] don't start multiple instance")
+		os.Exit(1)
+	}
+	l.Close()
+
+	// generate token mode
+	secret = os.Getenv(ENV_SECRET)
+	if opts.GenToken {
+		if secret == "" {
+			log.Fatalln(errors.New("environment variable [" + ENV_SECRET + "] is empty"))
+		}
+
+		token, err := GenerateToken(secret, host)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		fmt.Println("genarated token: " + token)
+		os.Exit(0)
 	}
 
 	// whitelist for subscribe channnels
@@ -144,7 +137,6 @@ func main() {
 		var err error
 		kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
 		if err != nil {
-			Unlock()
 			log.Fatalln(err)
 		}
 		defer kvsDB.Close()
@@ -211,7 +203,6 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			Unlock()
 			log.Fatalln(err)
 		}
 	}()
@@ -226,15 +217,9 @@ func main() {
 }
 
 func GracefulShutdown() {
-	// unlock
-	if !TARGET_HEROKU {
-		Unlock()
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		Unlock()
 		log.Fatalln(err)
 	}
 }
@@ -244,11 +229,5 @@ func SecureSprintf(s string, ss string) string {
 		return fmt.Sprintf(s, ss)
 	} else {
 		return fmt.Sprintf(s, "")
-	}
-}
-
-func Unlock() {
-	if IsExist(LOCK_FILE) {
-		os.Remove(LOCK_FILE)
 	}
 }
