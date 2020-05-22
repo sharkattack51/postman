@@ -6,22 +6,25 @@ class Postman {
 		};
 		this.ws.onmessage = function(we) {
             //console.log(we);
-            if(we.data == "")
+            if(we.data == "" || we.data.length < 8)
                 return;
             
-            let msg = we.data.split("message ")
-            if(msg.length != 2)
+            let head = "";
+            for(let i = 0; i < 8; i++)
+                head += we.data[i]
+            if(head != "message ")
                 return;
+
+            let msg = "";
+            for(let i = 8; i < we.data.length; i++)
+                msg += we.data[i]
             
-            if(msg[1] == "\"pong\"") {
+            if(msg == "\"pong\"") {
                 let e = new Event("on_postman_pingpong");
                 document.dispatchEvent(e);
             } else {
-                let s = "";
-                for(let i = 1; i < msg.length; i++)
-                    s += msg[i]
                 let e = new Event("on_postman_message");
-                e.data = JSON.parse(s);
+                e.data = JSON.parse(msg);
                 document.dispatchEvent(e);
             }
 		}
