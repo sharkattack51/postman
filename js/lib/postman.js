@@ -9,16 +9,11 @@ class Postman {
             if(we.data == "" || we.data.length < 8)
                 return;
             
-            let head = "";
-            for(let i = 0; i < 8; i++)
-                head += we.data[i]
+            let head = we.data.substring(0, 8);
             if(head != "message ")
                 return;
 
-            let msg = "";
-            for(let i = 8; i < we.data.length; i++)
-                msg += we.data[i]
-            
+            let msg = we.data.substring(8);
             if(msg == "\"pong\"") {
                 let e = new Event("on_postman_pingpong");
                 document.dispatchEvent(e);
