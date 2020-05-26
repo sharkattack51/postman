@@ -83,4 +83,10 @@ class Postman {
             this.ws.send("publish " + JSON.stringify(pub_msg));
         }
     }
+
+    disconnect() {
+        if(this.ws.readyState === 1) {
+            this.ws.close();
+        }
+    }
 }
