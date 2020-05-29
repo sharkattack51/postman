@@ -115,7 +115,7 @@ namespace Postman
 			}
 		}
 
-		void OnApplicationQuit()
+		void OnDestroy()
 		{
 			reconnectOnClose = false;
 			Close(true);
