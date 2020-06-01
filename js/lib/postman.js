@@ -1,11 +1,19 @@
 class Postman {
-    constructor(serverIp, reconnectOnClose) {
-        this.ws = new WebSocket("ws://" + serverIp + "/postman");
+    constructor(serverIp, ssl) {
+        this.url = serverIp + "/postman";
+        if(ssl)
+            this.url = "wss://" + this.url;
+        else
+            this.url = "ws://" + this.url;
+        
+        this.ws = new WebSocket(this.url);
+
 		this.ws.onopen = function(we) {
-			//console.log(we);
-		};
+            let e = new Event("on_postman_open");
+            document.dispatchEvent(e);
+        };
+        
 		this.ws.onmessage = function(we) {
-            //console.log(we);
             if(we.data == "" || we.data.length < 8)
                 return;
             
@@ -22,21 +30,23 @@ class Postman {
                 e.data = JSON.parse(msg);
                 document.dispatchEvent(e);
             }
-		}
+        }
+        
 		this.ws.onclose = function(we) {
-            //console.log(we);
             let e = new Event("on_postman_close");
             document.dispatchEvent(e);
-		};
+        };
+        
 		this.ws.onerror = function(we) {
-            //console.log(we);
             let e = new Event("on_postman_error");
             document.dispatchEvent(e);
         };
     }
 
     on(eventType, func) {
-        if(eventType == "pingpong")
+        if(eventType == "open")
+            document.addEventListener("on_postman_open", func);
+        else if(eventType == "pingpong")
             document.addEventListener("on_postman_pingpong", func);
         else if(eventType == "message")
             document.addEventListener("on_postman_message", func);
