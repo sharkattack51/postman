@@ -1,3 +1,30 @@
+/*
+    // Postman Client JS
+
+    let postman = new Postman(host, true);
+    
+    postman.on("open", () => {
+        postman.subscribe("channel");
+    });
+
+    postman.on("message", (e) => {
+        let ch = e.data.channel;
+        let msg = e.data.message;
+        let tag = e.data.tag;
+        let ext = e.data.extention;
+
+        console.log(e.data);
+    });
+
+    postman.on("close", () => {
+        console.log("close");
+    });
+
+    postman.on("error", (e) => {
+        console.log(e.data);
+    });
+*/
+
 class Postman {
     constructor(serverIp, ssl) {
         this.url = serverIp + "/postman";
@@ -21,7 +48,7 @@ class Postman {
             if(head != "message ")
                 return;
 
-            let msg = we.data.substring(8);
+            let msg = we.data.substring(8, we.data.length);
             if(msg == "\"pong\"") {
                 let e = new Event("on_postman_pingpong");
                 document.dispatchEvent(e);
@@ -59,6 +86,11 @@ class Postman {
     ping() {
         if(this.ws.readyState === 1)
             this.ws.send("ping {}");
+    }
+
+    status() {
+        if(this.ws.readyState === 1)
+            this.ws.send("status {}");
     }
 
     subscribe(channel) {
