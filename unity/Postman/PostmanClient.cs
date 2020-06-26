@@ -329,6 +329,8 @@ namespace Postman
 				Debug.Log(string.Format("PostmanClient :: store get [ {0} : {1} ]", key, responce.result));
 			}
 
+			request.Dispose();
+			
 			return responce.result;
 		}
 
@@ -348,6 +350,8 @@ namespace Postman
 				Debug.LogError("PostmanClient :: " + request.error);
 			else
 				Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
+
+			request.Dispose();
 		}
 
 		public bool StoreHasKey(string key)
@@ -376,6 +380,9 @@ namespace Postman
 
 			bool b = false;
 			bool.TryParse(responce.result, out b);
+
+			request.Dispose();
+
 			return b;
 		}
 
@@ -395,6 +402,8 @@ namespace Postman
 				Debug.LogError("PostmanClient :: " + request.error);
 			else
 				Debug.Log(string.Format("PostmanClient :: store delete [ {0} ]", key));
+
+			request.Dispose();
 		}
 #endregion
 	}
