@@ -101,9 +101,9 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 		return
 	}
 
-	if len(whiteList) > 0 {
+	if len(safeList) > 0 {
 		contain := false
-		for _, ch := range whiteList {
+		for _, ch := range safeList {
 			if msg.Channel() == ch {
 				contain = true
 				break

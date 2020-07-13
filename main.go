@@ -38,7 +38,7 @@ const (
 type Options struct {
 	Port         string `short:"p" long:"port" default:"8800" description:"listen port number"`
 	LogDir       string `short:"l" long:"log" description:"output log location"`
-	Channels     string `short:"c" long:"chlist" description:"whitelist for channels"`
+	Channels     string `short:"c" long:"chlist" description:"safelist for channels"`
 	IpAddresses  string `short:"i" long:"iplist" description:"connectable ip_address list"`
 	UseFileApi   bool   `short:"f" long:"file" description:"enable file server api"`
 	UsePluginApi bool   `short:"u" long:"plugin" description:"enable plugin api"`
@@ -47,16 +47,16 @@ type Options struct {
 }
 
 var (
-	srv       *http.Server
-	host      string
-	roomMg    *golem.RoomManager
-	conns     map[string]*golem.Connection
-	whiteList []string
-	ipList    []string
-	logger    *Logger
-	kvsDB     *leveldb.DB
-	opts      Options
-	secret    string
+	srv      *http.Server
+	host     string
+	roomMg   *golem.RoomManager
+	conns    map[string]*golem.Connection
+	safeList []string
+	ipList   []string
+	logger   *Logger
+	kvsDB    *leveldb.DB
+	opts     Options
+	secret   string
 )
 
 //
@@ -111,11 +111,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	// whitelist for subscribe channnels
+	// safelist for subscribe channnels
 	chSplits := strings.Split(opts.Channels, ",")
 	for _, ch := range chSplits {
 		if ch != "" {
-			whiteList = append(whiteList, ch)
+			safeList = append(safeList, ch)
 		}
 	}
 
