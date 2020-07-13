@@ -4,7 +4,7 @@ easy pub/sub messaging server using websocket.
 Application Options:
 - `-p, --port`: listen port number (default: 8800)
 - `-l, --log`: output log location
-- `-c, --chlist`: whitelist for channels
+- `-c, --chlist`: safelist for channels
 - `-i, --iplist`: connectable ip_address list
 - `-f, --file`: enable file server api
 - `-u, --plugin`: enable plugin api
