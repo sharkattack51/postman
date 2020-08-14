@@ -153,10 +153,14 @@ func NewStatusMessage(rm *golem.RoomManager) *StatusMessage {
 	channels := make(map[string][]string)
 
 	if rm != nil {
-		for _, ri := range rm.GetRoomInfos() {
+		for i, ri := range rm.GetRoomInfos() {
 			addrs := []string{}
 			for _, c := range ri.Room.GetMembers() {
 				addr := strings.Split(c.GetSocket().RemoteAddr().String(), ":")[0]
+				if TARGET_HEROKU {
+					// mask ip address
+					addr = fmt.Sprintf("conn_%d", i)
+				}
 				addrs = append(addrs, addr)
 			}
 			channels[ri.Topic] = addrs
