@@ -21,7 +21,7 @@ Help Options:
 - `Status`
   - <- "status {}"
 - `Subscribe`
-  - <- "subscribe {"ch": "CHANNEL"}"
+  - <- "subscribe {"ch": "CHANNEL", ["ci": "CLIENT_INFO"]}"
 - `Unsubscribe`
   - <- "unsubscribe {"ch": "CHANNEL"}"
 - `Publish`
@@ -35,8 +35,8 @@ http://XXX.XXX.XXX.XXX:8800/postman
   - (GET) [/status]()
   - (GET) [/status_pp]()
 - `Publish`
-  - (GET) [/publish?ch=CHANNEL&msg=MESSAGE[&tag=TAG&ext=OTHER]]()
-  - (POST) [/publish]() <- json={"ch": "CHANNEL", "msg": "MESSAGE", ["tag": "TAG", "ext": "OTHER"]}
+  - (GET) [/publish?ch=CHANNEL&msg=MESSAGE[&tag=TAG&ext=OTHER&ci=CLIENT_INFO]]()
+  - (POST) [/publish]() <- json={"ch": "CHANNEL", "msg": "MESSAGE", ["tag": "TAG", "ext": "OTHER", "ci": "CLIENT_INFO"]}
 - `Store`
   - (GET) [/store?cmd=(GET|SET|HAS|DEL)&key=KEY[&val=VALUE]]()
   - (POST) [/store]() <- json={"cmd": "(GET|SET|HAS|DEL)", "key": "KEY", ["val": "VALUE"]}
