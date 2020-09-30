@@ -93,10 +93,11 @@ class Postman {
             this.ws.send("status {}");
     }
 
-    subscribe(channel) {
+    subscribe(channel, client_info = "") {
         if(this.ws.readyState === 1) {
             let sub_msg = {
-                channel: channel
+                channel: channel,
+                client_info: client_info
             }
 
             this.ws.send("subscribe " + JSON.stringify(sub_msg));

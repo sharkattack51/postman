@@ -261,15 +261,15 @@ namespace Postman
 #endregion
 
 #region subscribe
-        public void Subscribe(string channel)
+        public void Subscribe(string channel, string client_info = "")
         {
             if(isConnect && webSocket != null && webSocket.IsAlive)
-                StartCoroutine(SubscribeCoroutine(channel));
+                StartCoroutine(SubscribeCoroutine(channel, client_info));
         }
 
-        private IEnumerator SubscribeCoroutine(string channel)
+        private IEnumerator SubscribeCoroutine(string channel, string client_info)
         {
-            SubscribeMessageData sub = new SubscribeMessageData(channel);
+            SubscribeMessageData sub = new SubscribeMessageData(channel, client_info);
             string json = JsonConvert.SerializeObject(sub);
             webSocket.SendAsync(PostmanMassageData.BuildMessage(MessageType.SUBSCRIBE, json), null);
             yield return null;

@@ -38,10 +38,12 @@ namespace Postman
     public class SubscribeMessageData : PostmanMassageData
     {
         public string channel;
+        public string client_info;
 
-        public SubscribeMessageData(string channel)
+        public SubscribeMessageData(string channel, string client_info = "")
         {
             this.channel = channel;
+            this.client_info = client_info;
         }
     }
 

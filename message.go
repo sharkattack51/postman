@@ -37,8 +37,10 @@ func NewSecureMessage(token string, tkn string) *SecureMessage {
 //
 
 type SubscribeMessage struct {
-	RawChannel string `json:"channel"`
-	RawCh      string `json:"ch"`
+	RawChannel    string `json:"channel"`
+	RawCh         string `json:"ch"`
+	RawClientInfo string `json:"client_info"`
+	RawCi         string `json:"ci"`
 }
 
 func (m *SubscribeMessage) Channel() string {
@@ -49,18 +51,28 @@ func (m *SubscribeMessage) Channel() string {
 	}
 }
 
+func (m *SubscribeMessage) Info() string {
+	if m.RawClientInfo != "" {
+		return m.RawClientInfo
+	} else {
+		return m.RawCi
+	}
+}
+
 //
 // Publish
 //
 
 type PublishMessage struct {
-	RawChannel   string `json:"channel"`
-	RawCh        string `json:"ch"`
-	RawMessage   string `json:"message"`
-	RawMsg       string `json:"msg"`
-	RawTag       string `json:"tag"`
-	RawExtention string `json:"extention"`
-	RawExt       string `json:"ext"`
+	RawChannel    string `json:"channel"`
+	RawCh         string `json:"ch"`
+	RawMessage    string `json:"message"`
+	RawMsg        string `json:"msg"`
+	RawTag        string `json:"tag"`
+	RawExtention  string `json:"extention"`
+	RawExt        string `json:"ext"`
+	RawClientInfo string `json:"client_info"`
+	RawCi         string `json:"ci"`
 }
 
 func (m *PublishMessage) Channel() string {
@@ -91,15 +103,25 @@ func (m *PublishMessage) Extention() string {
 	}
 }
 
-func NewPublishMessage(channel string, ch string, message string, msg string, tag string, extention string, ext string) *PublishMessage {
+func (m *PublishMessage) Info() string {
+	if m.RawClientInfo != "" {
+		return m.RawClientInfo
+	} else {
+		return m.RawCi
+	}
+}
+
+func NewPublishMessage(channel string, ch string, message string, msg string, tag string, extention string, ext string, client_info string, ci string) *PublishMessage {
 	pmsg := &PublishMessage{
-		RawChannel:   channel,
-		RawCh:        ch,
-		RawMessage:   message,
-		RawMsg:       msg,
-		RawTag:       tag,
-		RawExtention: extention,
-		RawExt:       ext,
+		RawChannel:    channel,
+		RawCh:         ch,
+		RawMessage:    message,
+		RawMsg:        msg,
+		RawTag:        tag,
+		RawExtention:  extention,
+		RawExt:        ext,
+		RawClientInfo: client_info,
+		RawCi:         ci,
 	}
 	return pmsg
 }
@@ -157,10 +179,15 @@ func NewStatusMessage(rm *golem.RoomManager) *StatusMessage {
 			addrs := []string{}
 			for _, c := range ri.Room.GetMembers() {
 				addr := strings.Split(c.GetSocket().RemoteAddr().String(), ":")[0]
+				if info, exist := cliInfos[addr]; exist {
+					addr = info + "@" + addr
+				}
+
 				if TARGET_HEROKU {
 					// mask ip address
 					addr = fmt.Sprintf("conn_%d", i)
 				}
+
 				addrs = append(addrs, addr)
 			}
 			channels[ri.Topic] = addrs

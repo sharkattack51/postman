@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	VERSION         = "1.0 alpha 7"
+	VERSION         = "1.0 alpha 8"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -51,6 +51,7 @@ var (
 	host     string
 	roomMg   *golem.RoomManager
 	conns    map[string]*golem.Connection
+	cliInfos map[string]string
 	safeList []string
 	ipList   []string
 	logger   *Logger
@@ -72,6 +73,7 @@ func main() {
 	host = GetHostIP()
 	roomMg = golem.NewRoomManager()
 	conns = make(map[string]*golem.Connection)
+	cliInfos = make(map[string]string)
 
 	// option flags
 	_, err := flags.Parse(&opts)
@@ -152,7 +154,7 @@ func main() {
 	fmt.Println("[Status]")
 	fmt.Println("<- \"status {}\"")
 	fmt.Println("[Subscribe]")
-	fmt.Println("<- \"subscribe {\"ch\":\"CHANNEL\"}\"")
+	fmt.Println("<- \"subscribe {\"ch\":\"CHANNEL\",[\"ci\":\"CLIENT_INFO\"]}\"")
 	fmt.Println("[Unsubscribe]")
 	fmt.Println("<- \"unsubscribe {\"ch\":\"CHANNEL\"}\"")
 	fmt.Println("[Publish]")
@@ -164,8 +166,8 @@ func main() {
 	fmt.Println(SecureSprintf("(GET) /status%s", "?tkn=TOKEN"))
 	fmt.Println(SecureSprintf("(GET) /status_pp%s", "?tkn=TOKEN"))
 	fmt.Println("[Publish]")
-	fmt.Println(SecureSprintf("(GET) /publish?ch=CHANNEL&msg=MESSAGE[&tag=TAG&ext=OTHER]%s", "&tkn=TOKEN"))
-	fmt.Println(SecureSprintf("(POST) /publish <- json={\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\",[\"tag\":\"TAG\",\"ext\":\"OTHER\"]%s}", ",\"tkn\":\"TOKEN\""))
+	fmt.Println(SecureSprintf("(GET) /publish?ch=CHANNEL&msg=MESSAGE[&tag=TAG&ext=OTHER&ci=CLIENT_INFO]%s", "&tkn=TOKEN"))
+	fmt.Println(SecureSprintf("(POST) /publish <- json={\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\",[\"tag\":\"TAG\",\"ext\":\"OTHER\",\"ci\":\"CLIENT_INFO\"]%s}", ",\"tkn\":\"TOKEN\""))
 	if kvsDB != nil {
 		fmt.Println("[Store]")
 		fmt.Println(SecureSprintf("(GET) /store?cmd=(GET|SET|HAS|DEL)&key=KEY[&val=VALUE]%s", "&tkn=TOKEN"))
