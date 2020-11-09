@@ -46,9 +46,10 @@ namespace Postman
         void Start()
         {
 #if UNITY_EDITOR && UNITY_2018_3_OR_NEWER
+#if !UNITY_2019_3_OR_NEWER
             if(PlayerSettings.scriptingRuntimeVersion != ScriptingRuntimeVersion.Latest)
                 Debug.LogError("PostmanClient :: PlayerSettings.scriptingRuntimeVersion is Lagacy");
-
+#endif
             BuildTargetGroup target = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
             if(PlayerSettings.GetApiCompatibilityLevel(target) != ApiCompatibilityLevel.NET_4_6)
                 Debug.LogError("PostmanClient :: PlayerSettings.ApiCompatibilityLevel is Low");
@@ -246,17 +247,26 @@ namespace Postman
 #endregion
 
 #region postman send function
+
+#region ping
         public void Ping()
         {
             if(isConnect && webSocket != null)
                 StartCoroutine(PingCoroutine());
         }
 
-#region ping
         private IEnumerator PingCoroutine()
         {
             webSocket.SendAsync(PostmanMassageData.BuildMessage(MessageType.PING), null);
             yield return null;
+        }
+
+        public bool InternalPing()
+        {
+            if(webSocket != null)
+                return webSocket.Ping();
+            else
+                return false;
         }
 #endregion
 
