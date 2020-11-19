@@ -11,10 +11,17 @@ namespace Postman
 {
     public class PostmanClient : MonoBehaviour
     {
+        [Header("connect setting")]
         public string serverIp = "127.0.0.1:8800";
         public bool connectOnStart = true;
-        public bool reconnectOnClose = false;
+
+        [Header("connect retry setting")]
+        public bool reconnectOnClose = true;
+        public bool exponentialBackoff = false;
+
+        [Header("for secure mode option")]
         [TextArea] public string secureToken = "";
+
         public Action OnConnect;
         public Action<PublishMessageData> OnMessage;
         public Action OnClose;
@@ -179,14 +186,19 @@ namespace Postman
 
         private IEnumerator ReconnectCoroutine()
         {
+            float wait = 1.0f;
+
             while(true)
             {
                 Connect(true);
 
-                yield return new WaitForSeconds(1.0f);
+                yield return new WaitForSeconds(wait + UnityEngine.Random.Range(0.0f, 1.0f));
 
                 if(isConnect && webSocket != null && webSocket.IsAlive)
                     break;
+
+                if(exponentialBackoff)
+                    wait *= 2;
             }
 
             reconnecting = false;
