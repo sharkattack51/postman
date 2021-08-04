@@ -22,6 +22,7 @@ func GetHostIP() string {
 		for _, a := range addrs {
 			if ipv4 := a.To4(); ipv4 != nil {
 				ip = ipv4.String()
+				break
 			}
 		}
 	} else {
@@ -30,6 +31,7 @@ func GetHostIP() string {
 			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 				if ipnet.IP.To4() != nil {
 					ip = ipnet.IP.String()
+					break
 				}
 			}
 		}
