@@ -355,7 +355,11 @@ namespace Postman
             while(!request.isDone);
 
             ResultMessageData responce;
+#if UNITY_2020_1_OR_NEWER
+            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+#else
             if(request.isHttpError || request.isNetworkError)
+#endif
             {
                 Debug.LogError("PostmanClient :: " + request.error);
                 responce = new ResultMessageData("", request.error);
@@ -385,7 +389,11 @@ namespace Postman
 
             while(!request.isDone);
 
+#if UNITY_2020_1_OR_NEWER
+            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+#else
             if(request.isHttpError || request.isNetworkError)
+#endif
                 Debug.LogError("PostmanClient :: " + request.error);
             else
                 Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
@@ -416,7 +424,11 @@ namespace Postman
             while(!request.isDone);
 
             ResultMessageData responce;
+#if UNITY_2020_1_OR_NEWER
+            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+#else
             if(request.isHttpError || request.isNetworkError)
+#endif
             {
                 Debug.LogError("PostmanClient :: " + request.error);
                 responce = new ResultMessageData("", request.error);
@@ -446,7 +458,11 @@ namespace Postman
 
             while(!request.isDone);
 
+#if UNITY_2020_1_OR_NEWER
+            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+#else
             if(request.isHttpError || request.isNetworkError)
+#endif
                 Debug.LogError("PostmanClient :: " + request.error);
             else
                 Debug.Log(string.Format("PostmanClient :: store delete [ {0} ]", key));
