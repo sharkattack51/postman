@@ -377,7 +377,13 @@ namespace Postman
 #endregion
 
 #region store set
-        public void StoreSet(string key, string val)
+        public string StoreSet(string key, string val)
+        {
+            ResultMessageData data = StoreSetAsData(key, val);
+            return data.result;
+        }
+
+        public ResultMessageData StoreSetAsData(string key, string val)
         {
             string ip = serverIp.Replace("http://", "").Replace("https://", "");
             string url = string.Format("http://{0}/postman/store?cmd=SET&key={1}&val={2}", ip, key, val);
@@ -389,6 +395,7 @@ namespace Postman
 
             while(!request.isDone);
 
+            ResultMessageData responce;
 #if UNITY_2020_1_OR_NEWER
             if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
 #else
@@ -396,9 +403,14 @@ namespace Postman
 #endif
                 Debug.LogError("PostmanClient :: " + request.error);
             else
+            {
+                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
                 Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
+            }
 
             request.Dispose();
+
+            return responce;
         }
 #endregion
 
