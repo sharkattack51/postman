@@ -395,7 +395,7 @@ namespace Postman
 
             while(!request.isDone);
 
-            ResultMessageData responce;
+            ResultMessageData responce = new ResultMessageData("", "");
 #if UNITY_2020_1_OR_NEWER
             if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
 #else
