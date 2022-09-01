@@ -12,8 +12,11 @@ namespace Postman
     public class PostmanClient : MonoBehaviour
     {
         [Header("connect setting")]
-        public string serverIp = "127.0.0.1:8800";
+        public string serverIpOrUrl = "127.0.0.1:8800";
+        public bool useSSL = false;
         public bool connectOnStart = true;
+
+        private string host = "";
 
         [Header("connect retry setting")]
         public bool reconnectOnClose = true;
@@ -53,15 +56,19 @@ namespace Postman
         void Start()
         {
 #if UNITY_EDITOR && UNITY_2018_3_OR_NEWER
+
 #if !UNITY_2019_3_OR_NEWER
             if(PlayerSettings.scriptingRuntimeVersion != ScriptingRuntimeVersion.Latest)
                 Debug.LogError("PostmanClient :: PlayerSettings.scriptingRuntimeVersion is Lagacy");
 #endif
+
+#if !UNITY_2020_1_OR_NEWER
             BuildTargetGroup target = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget);
             if(PlayerSettings.GetApiCompatibilityLevel(target) != ApiCompatibilityLevel.NET_4_6)
                 Debug.LogError("PostmanClient :: PlayerSettings.ApiCompatibilityLevel is Low");
 #endif
 
+#endif
             if(connectOnStart)
                 Connect(true);
         }
@@ -144,12 +151,46 @@ namespace Postman
 
             try
             {
-                string ip = serverIp.Replace("http://", "").Replace("https://", "");
-                string url = string.Format("ws://{0}/postman", ip);
+                serverIpOrUrl = serverIpOrUrl.Trim();
+                serverIpOrUrl = serverIpOrUrl.TrimEnd('/');
+
+                host = "";
+                if(serverIpOrUrl.Contains("http://"))
+                {
+                    useSSL = false;
+                    host = serverIpOrUrl.Replace("http://", "");
+                }
+                else if(serverIpOrUrl.Contains("https://"))
+                {
+                    useSSL = true;
+                    host = serverIpOrUrl.Replace("https://", "");
+                }
+                else if(serverIpOrUrl.Contains("ws://"))
+                {
+                    useSSL = false;
+                    host = serverIpOrUrl.Replace("ws://", "");
+                }
+                else if(serverIpOrUrl.Contains("wss://"))
+                {
+                    useSSL = true;
+                    host = serverIpOrUrl.Replace("wss://", "");
+                }
+                else
+                    host = serverIpOrUrl;
+
+                host = host.Replace("/postman", "");
+                string url = host + "/postman";
+                if(useSSL)
+                    url = "wss://" + url;
+                else
+                    url = "ws://" + url;
+
                 if(secureToken != "")
                     url += "?tkn=" + secureToken;
 
                 webSocket = new WebSocket(url);
+                if(useSSL)
+                    webSocket.SslConfiguration.EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12;
                 webSocket.Compression = CompressionMethod.Deflate;
                 webSocket.OnOpen += OnWebSocketOpen;
                 webSocket.OnMessage += OnWebSocketMessage;
@@ -344,8 +385,7 @@ namespace Postman
 
         public ResultMessageData StoreGetAsData(string key)
         {
-            string ip = serverIp.Replace("http://", "").Replace("https://", "");
-            string url = string.Format("http://{0}/postman/store?cmd=GET&key={1}", ip, key);
+            string url = string.Format("{0}://{1}/postman/store?cmd=GET&key={1}", (useSSL ? "https" : "http"), host, key);
             if(secureToken != "")
                 url += "&tkn=" + secureToken;
 
@@ -385,8 +425,7 @@ namespace Postman
 
         public ResultMessageData StoreSetAsData(string key, string val)
         {
-            string ip = serverIp.Replace("http://", "").Replace("https://", "");
-            string url = string.Format("http://{0}/postman/store?cmd=SET&key={1}&val={2}", ip, key, val);
+            string url = string.Format("{0}://{1}/postman/store?cmd=SET&key={2}&val={3}", (useSSL ? "https" : "http"), host, key, val);
             if(secureToken != "")
                 url += "&tkn=" + secureToken;
 
@@ -425,8 +464,7 @@ namespace Postman
 
         public ResultMessageData StoreHasKeyAsData(string key)
         {
-            string ip = serverIp.Replace("http://", "").Replace("https://", "");
-            string url = string.Format("http://{0}/postman/store?cmd=HAS&key={1}", ip, key);
+            string url = string.Format("{0}://{1}/postman/store?cmd=HAS&key={2}", (useSSL ? "https" : "http"), host, key);
             if(secureToken != "")
                 url += "&tkn=" + secureToken;
 
@@ -460,8 +498,7 @@ namespace Postman
 #region store delete
         public void StoreDelete(string key)
         {
-            string ip = serverIp.Replace("http://", "").Replace("https://", "");
-            string url = string.Format("http://{0}/postman/store?cmd=DEL&key={1}", ip, key);
+            string url = string.Format("{0}://{1}/postman/store?cmd=DEL&key={2}", (useSSL ? "https" : "http"), host, key);
             if(secureToken != "")
                 url += "&tkn=" + secureToken;
 
