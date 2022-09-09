@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	VERSION         = "1.0"
+	VERSION         = "1.1"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -142,6 +142,16 @@ func main() {
 			log.Fatalln(err)
 		}
 		defer kvsDB.Close()
+
+		// file api document root
+		if opts.UseFileApi {
+			if !IsExist(SERVE_FILES_DIR) {
+				err = os.Mkdir(SERVE_FILES_DIR, 0777)
+				if err != nil {
+					log.Println(fmt.Sprintf("> [Warning] could not create \"%s\" directory", SERVE_FILES_DIR))
+				}
+			}
+		}
 	}
 
 	fmt.Println("===================================================")
@@ -175,7 +185,7 @@ func main() {
 	}
 	if opts.UseFileApi {
 		fmt.Println("[File]")
-		fmt.Println(SecureSprintf("(GET) /file?name=FILE_NAME%s", "&tkn=TOKEN"))
+		fmt.Println(SecureSprintf("(GET) /file/FILE_NAME%s", "?tkn=TOKEN"))
 		fmt.Println(SecureSprintf("(POST) /file <- file=FILE_BINARY %s", "json={\"tkn\":\"TOKEN\"}"))
 	}
 	if opts.UsePluginApi {
@@ -200,7 +210,7 @@ func main() {
 	http.HandleFunc("/postman/status", StatusHandler)
 	http.HandleFunc("/postman/status_pp", StatusPpHandler)
 	http.HandleFunc("/postman/store", StoreHandler)
-	http.HandleFunc("/postman/file", FileHandler)
+	http.HandleFunc("/postman/file/", FileHandler)
 	http.HandleFunc("/postman/plugin", PluginHandler)
 
 	go func() {

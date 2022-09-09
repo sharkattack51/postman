@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"os"
@@ -442,6 +443,18 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !IsExist(SERVE_FILES_DIR) {
+		log.Println(fmt.Sprintf("> [Warning] directory not found \"%s\" from %s", SERVE_FILES_DIR, r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, fmt.Sprintf("directory not found \"%s\"", SERVE_FILES_DIR), logrus.Fields{"method": "file post", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", fmt.Sprintf("directory not found \"%s\"", SERVE_FILES_DIR))
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
 	if r.Method == "POST" {
 		formFile, header, err := r.FormFile("file")
 		defer formFile.Close()
@@ -456,21 +469,6 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			j, _ := json.Marshal(msg)
 			fmt.Fprint(w, string(j))
 			return
-		}
-
-		if !IsExist(SERVE_FILES_DIR) {
-			err = os.Mkdir(SERVE_FILES_DIR, 0777)
-			if err != nil {
-				log.Println(fmt.Sprintf("> [Warning] could not create \"%s\" directory from %s", SERVE_FILES_DIR, r.RemoteAddr))
-				if logger != nil {
-					logger.Log(WARN, fmt.Sprintf("could not create \"%s\" directory", SERVE_FILES_DIR), logrus.Fields{"method": "file post", "from": r.RemoteAddr})
-				}
-
-				msg := NewResultMessage("fail", fmt.Sprintf("could not create \"%s\" directory", SERVE_FILES_DIR))
-				j, _ := json.Marshal(msg)
-				fmt.Fprint(w, string(j))
-				return
-			}
 		}
 
 		path := filepath.Join(SERVE_FILES_DIR, header.Filename)
@@ -514,18 +512,14 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, string(j))
 
 	} else if r.Method == "GET" {
-		params := make(map[string]string)
-		query := r.URL.Query()
-		for _, s := range []string{"name"} {
-			param := query[s]
-			if len(param) > 0 {
-				params[s] = param[0]
-			} else {
-				params[s] = ""
-			}
+		urls := strings.Split(r.URL.Path, "/postman/file/")
+		pathToFile := ""
+		if len(urls) >= 2 {
+			pathToFile = urls[1]
 		}
+		pathToFile = html.UnescapeString(pathToFile)
 
-		if params["name"] == "" {
+		if pathToFile == "" {
 			log.Println(fmt.Sprintf("> [Warning] file name is empty from %s", r.RemoteAddr))
 			if logger != nil {
 				logger.Log(WARN, "file name is empty", logrus.Fields{"method": "file get", "from": r.RemoteAddr})
@@ -537,23 +531,23 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		path := filepath.Join(SERVE_FILES_DIR, params["name"])
+		path := filepath.Join(SERVE_FILES_DIR, pathToFile)
 
 		if !IsExist(path) {
-			log.Println(fmt.Sprintf("> [Warning] file not found \"%s\" from %s", params["name"], r.RemoteAddr))
+			log.Println(fmt.Sprintf("> [Warning] file not found \"%s\" from %s", pathToFile, r.RemoteAddr))
 			if logger != nil {
-				logger.Log(WARN, "file not found", logrus.Fields{"method": "file get", "name": params["name"], "from": r.RemoteAddr})
+				logger.Log(WARN, "file not found", logrus.Fields{"method": "file get", "name": pathToFile, "from": r.RemoteAddr})
 			}
 
-			msg := NewResultMessage("fail", fmt.Sprintf("file not found \"%s\"", params["name"]))
+			msg := NewResultMessage("fail", fmt.Sprintf("file not found \"%s\"", pathToFile))
 			j, _ := json.Marshal(msg)
 			fmt.Fprint(w, string(j))
 			return
 		}
 
-		log.Println(fmt.Sprintf("> [File] serve access \"%s\" from %s", params["name"], r.RemoteAddr))
+		log.Println(fmt.Sprintf("> [File] serve access \"%s\" from %s", pathToFile, r.RemoteAddr))
 		if logger != nil {
-			logger.Log(INFO, fmt.Sprintf("file served"), logrus.Fields{"method": "file get", "file": params["name"], "from": r.RemoteAddr})
+			logger.Log(INFO, fmt.Sprintf("file served"), logrus.Fields{"method": "file get", "file": pathToFile, "from": r.RemoteAddr})
 		}
 
 		// return file
