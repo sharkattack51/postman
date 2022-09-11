@@ -518,17 +518,8 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			pathToFile = urls[1]
 		}
 		pathToFile = html.UnescapeString(pathToFile)
-
 		if pathToFile == "" {
-			log.Println(fmt.Sprintf("> [Warning] file name is empty from %s", r.RemoteAddr))
-			if logger != nil {
-				logger.Log(WARN, "file name is empty", logrus.Fields{"method": "file get", "from": r.RemoteAddr})
-			}
-
-			msg := NewResultMessage("fail", "file name is empty")
-			j, _ := json.Marshal(msg)
-			fmt.Fprint(w, string(j))
-			return
+			pathToFile = "index.html"
 		}
 
 		path := filepath.Join(SERVE_FILES_DIR, pathToFile)
