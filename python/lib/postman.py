@@ -15,8 +15,8 @@ class Postman:
 
     def __init__(self, serverIpOrUrl="127.0.0.1:8800", ssl=False, on_connect=None, on_message=None, on_close=None, on_error=None):
         serverIpOrUrl = serverIpOrUrl.strip()
-        serverIpOrUrl = serverIpOrUrl.lstrip("http://").lstrip("https://").lstrip("ws://").lstrip("wss://")
-        serverIpOrUrl = serverIpOrUrl.rstrip("/postman")
+        serverIpOrUrl = serverIpOrUrl.replace("http://", "").replace("https://", "").replace("ws://", "").replace("wss://", "")
+        serverIpOrUrl = serverIpOrUrl.replace("/postman", "")
         self.url = serverIpOrUrl + "/postman"
         if ssl:
             self.url = "wss://" + self.url
