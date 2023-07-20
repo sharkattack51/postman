@@ -229,6 +229,18 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !opts.UseStoreApi || kvsDB == nil {
+		log.Println(fmt.Sprintf("> [Warning] key-value store api is disable from %s", r.RemoteAddr))
+		if logger != nil {
+			logger.Log(WARN, "key-value store api is disable", logrus.Fields{"method": "file", "from": r.RemoteAddr})
+		}
+
+		msg := NewResultMessage("fail", "key-value store api is disable")
+		j, _ := json.Marshal(msg)
+		fmt.Fprint(w, string(j))
+		return
+	}
+
 	params := make(map[string]string)
 	query := r.URL.Query()
 	for _, s := range []string{"command", "cmd", "key", "value", "val"} {

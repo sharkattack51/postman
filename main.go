@@ -21,13 +21,13 @@ import (
 )
 
 const (
-	VERSION         = "1.1"
+	VERSION         = "1.2"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
 	PLUGIN_DIR      = "plugin"
 	PLUGIN_JSON     = "plugin.json"
-	TARGET_HEROKU   = false
+	TARGET_PAAS     = false
 
 	ENV_SECRET = "SECRET"
 	ENV_PORT   = "PORT"
@@ -40,6 +40,7 @@ type Options struct {
 	LogDir       string `short:"l" long:"log" description:"output log location"`
 	Channels     string `short:"c" long:"chlist" description:"safelist for channels"`
 	IpAddresses  string `short:"i" long:"iplist" description:"connectable ip_address list"`
+	UseStoreApi  bool   `short:"k" long:"store" description:"enable key-value store api"`
 	UseFileApi   bool   `short:"f" long:"file" description:"enable file server api"`
 	UsePluginApi bool   `short:"u" long:"plugin" description:"enable plugin api"`
 	SecureMode   bool   `short:"s" long:"secure" description:"secure mode"`
@@ -65,7 +66,7 @@ var (
 //
 
 func main() {
-	if !TARGET_HEROKU && runtime.GOOS == "windows" {
+	if !TARGET_PAAS && runtime.GOOS == "windows" {
 		// graceful shutdown for windows
 		RegisterOSHandler(GracefulShutdown)
 	}
@@ -81,11 +82,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	// for heroku build
-	if TARGET_HEROKU {
+	// for PaaS build
+	if TARGET_PAAS {
 		opts.Port = os.Getenv(ENV_PORT)
 		opts.Channels = os.Getenv(ENV_CHLIST)
 		opts.IpAddresses = os.Getenv(ENV_IPLIST)
+		opts.UseStoreApi = false
 		opts.UseFileApi = false
 		opts.UsePluginApi = false
 	}
@@ -129,19 +131,36 @@ func main() {
 		}
 	}
 
-	if !TARGET_HEROKU {
+	if !TARGET_PAAS {
 		// log
 		if opts.LogDir != "" {
 			logger = NewLogger(opts.LogDir, LOG_FILE)
 		}
 
-		// store db
 		var err error
-		kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
-		if err != nil {
-			log.Fatalln(err)
+
+		// store db
+		if opts.UseStoreApi {
+			kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
+			if err != nil {
+				log.Println(fmt.Sprintf("> [Warning] could not open \"%s\": %s", DB_FILE, err))
+
+				// remove .db directory
+				err = os.RemoveAll(DB_FILE)
+				if err != nil {
+					log.Println(fmt.Sprintf("> [Warning] could not remove \"%s\": %s", DB_FILE, err))
+				} else {
+					// one more try
+					kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
+					if err != nil {
+						log.Println(fmt.Sprintf("> [Warning] could not open \"%s\": %s", DB_FILE, err))
+					} else {
+						log.Println(fmt.Sprintf("> [Warning] recreated \"%s\"", DB_FILE))
+					}
+				}
+			}
+			defer kvsDB.Close()
 		}
-		defer kvsDB.Close()
 
 		// file api document root
 		if opts.UseFileApi {
@@ -178,7 +197,7 @@ func main() {
 	fmt.Println("[Publish]")
 	fmt.Println(SecureSprintf("(GET) /publish?ch=CHANNEL&msg=MESSAGE[&tag=TAG&ext=OTHER&ci=CLIENT_INFO]%s", "&tkn=TOKEN"))
 	fmt.Println(SecureSprintf("(POST) /publish <- json={\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\",[\"tag\":\"TAG\",\"ext\":\"OTHER\",\"ci\":\"CLIENT_INFO\"]%s}", ",\"tkn\":\"TOKEN\""))
-	if kvsDB != nil {
+	if opts.UseStoreApi && kvsDB != nil {
 		fmt.Println("[Store]")
 		fmt.Println(SecureSprintf("(GET) /store?cmd=(GET|SET|HAS|DEL)&key=KEY[&val=VALUE]%s", "&tkn=TOKEN"))
 		fmt.Println(SecureSprintf("(POST) /store <- json={\"cmd\":\"(GET|SET|HAS|DEL)\",\"key\":\"KEY\",[\"val\":\"VALUE\"]%s}", ",\"tkn\":\"TOKEN\""))

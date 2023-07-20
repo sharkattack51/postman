@@ -183,7 +183,7 @@ func NewStatusMessage(rm *golem.RoomManager) *StatusMessage {
 					addr = info + "@" + addr
 				}
 
-				if TARGET_HEROKU {
+				if TARGET_PAAS {
 					// mask ip address
 					addr = fmt.Sprintf("conn_%d", i)
 				}
