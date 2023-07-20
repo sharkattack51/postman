@@ -6,6 +6,7 @@ Application Options:
 - `-l, --log`: output log location
 - `-c, --chlist`: safelist for channels
 - `-i, --iplist`: connectable ip_address list
+- `-k, --store`: enable key-value store api
 - `-f, --file`: enable file server api
 - `-u, --plugin`: enable plugin api
 - `-s, --secure`: enable secure mode
@@ -61,11 +62,11 @@ http://XXX.XXX.XXX.XXX:8800/postman
 
 `$ go build -tags windows ./...` others `$ go build ./...`
 
-### Using on Heroku
+### Using on PaaS
 
 change code in `main.go`.
 ```
-TARGET_HEROKU = true
+TARGET_PAAS = true
 ```
 
-and `$ git push heroku master`
+and deploy.
