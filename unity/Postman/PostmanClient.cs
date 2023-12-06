@@ -385,7 +385,7 @@ namespace Postman
 
         public ResultMessageData StoreGetAsData(string key)
         {
-            string url = string.Format("{0}://{1}/postman/store?cmd=GET&key={1}", (useSSL ? "https" : "http"), host, key);
+            string url = string.Format("{0}://{1}/postman/store?cmd=GET&key={2}", (useSSL ? "https" : "http"), host, key);
             if(secureToken != "")
                 url += "&tkn=" + secureToken;
 
@@ -459,7 +459,8 @@ namespace Postman
             ResultMessageData data = StoreHasKeyAsData(key);
 
             bool b = false;
-            return bool.TryParse(data.result, out b);
+            bool.TryParse(data.result, out b);
+            return b;
         }
 
         public ResultMessageData StoreHasKeyAsData(string key)
