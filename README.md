@@ -54,7 +54,8 @@ http://XXX.XXX.XXX.XXX:8800/postman
 - `Unity`
   - require
     - [websocket-sharp.dll](https://github.com/sta/websocket-sharp)
-    - [Json.NET for Unity](https://assetstore.unity.com/packages/tools/input-management/json-net-for-unity-11347)
+    - [Json.NET for Unity](https://openupm.com/packages/jillejr.newtonsoft.json-for-unity/)
+    - [UniTask](https://openupm.com/packages/com.cysharp.unitask/)
 - `js`
 - `python`
 
