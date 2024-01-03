@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEditor;
 using WebSocketSharp;
 using Newtonsoft.Json;
+using Cysharp.Threading.Tasks;
 
 namespace Postman
 {
@@ -368,9 +369,17 @@ namespace Postman
             string json = JsonConvert.SerializeObject(pub);
 
             if(Application.platform == RuntimePlatform.Android)
-                webSocket.Send(PostmanMassageData.BuildMessage(MessageType.PUBLISH, json));
+            {
+                UniTask.RunOnThreadPool(() => {
+                    webSocket.Send(PostmanMassageData.BuildMessage(MessageType.PUBLISH, json));
+                }).Forget();
+            }
             else
-                webSocket.SendAsync(PostmanMassageData.BuildMessage(MessageType.PUBLISH, json), null);
+            {
+                UniTask.RunOnThreadPool(() => {
+                    webSocket.SendAsync(PostmanMassageData.BuildMessage(MessageType.PUBLISH, json), null);
+                }).Forget();
+            }
 
             yield return null;
         }
