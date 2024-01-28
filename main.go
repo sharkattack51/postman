@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	VERSION         = "1.2"
+	VERSION         = "1.2.1"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"

@@ -392,16 +392,58 @@ namespace Postman
             return data.result;
         }
 
+        public async UniTask<string> StoreGetAsync(string key)
+        {
+            ResultMessageData data = await StoreGetAsDataAsync(key);
+            return data.result;
+        }
+
         public ResultMessageData StoreGetAsData(string key)
         {
-            string url = string.Format("{0}://{1}/postman/store?cmd=GET&key={2}", (useSSL ? "https" : "http"), host, key);
+            string url = string.Format("{0}://{1}/postman/store?cmd=GET&key={2}",
+                (useSSL ? "https" : "http"),
+                host,
+                Uri.EscapeDataString(key));
             if(secureToken != "")
-                url += "&tkn=" + secureToken;
+                url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
             UnityWebRequest request = UnityWebRequest.Get(url);
             request.SendWebRequest();
 
             while(!request.isDone);
+
+            ResultMessageData responce;
+#if UNITY_2020_1_OR_NEWER
+            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+#else
+            if(request.isHttpError || request.isNetworkError)
+#endif
+            {
+                Debug.LogError("PostmanClient :: " + request.error);
+                responce = new ResultMessageData("", request.error);
+            }
+            else
+            {
+                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
+                Debug.Log(string.Format("PostmanClient :: store get [ {0} : {1} ]", key, responce.result));
+            }
+
+            request.Dispose();
+
+            return responce;
+        }
+
+        public async UniTask<ResultMessageData> StoreGetAsDataAsync(string key)
+        {
+            string url = string.Format("{0}://{1}/postman/store?cmd=GET&key={2}",
+                (useSSL ? "https" : "http"),
+                host,
+                Uri.EscapeDataString(key));
+            if(secureToken != "")
+                url += "&tkn=" + Uri.EscapeDataString(secureToken);
+
+            UnityWebRequest request = UnityWebRequest.Get(url);
+            await request.SendWebRequest();
 
             ResultMessageData responce;
 #if UNITY_2020_1_OR_NEWER
@@ -432,16 +474,57 @@ namespace Postman
             return data.result;
         }
 
+        public async UniTask<string> StoreSetAsync(string key, string val)
+        {
+            ResultMessageData data = await StoreSetAsDataAsync(key, val);
+            return data.result;
+        }
+
         public ResultMessageData StoreSetAsData(string key, string val)
         {
-            string url = string.Format("{0}://{1}/postman/store?cmd=SET&key={2}&val={3}", (useSSL ? "https" : "http"), host, key, val);
+            string url = string.Format("{0}://{1}/postman/store?cmd=SET&key={2}&val={3}",
+                (useSSL ? "https" : "http"),
+                host,
+                Uri.EscapeDataString(key),
+                Uri.EscapeDataString(val));
             if(secureToken != "")
-                url += "&tkn=" + secureToken;
+                url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
             UnityWebRequest request = UnityWebRequest.Get(url);
             request.SendWebRequest();
 
             while(!request.isDone);
+
+            ResultMessageData responce = new ResultMessageData("", "");
+#if UNITY_2020_1_OR_NEWER
+            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+#else
+            if(request.isHttpError || request.isNetworkError)
+#endif
+                Debug.LogError("PostmanClient :: " + request.error);
+            else
+            {
+                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
+                Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
+            }
+
+            request.Dispose();
+
+            return responce;
+        }
+
+        public async UniTask<ResultMessageData> StoreSetAsDataAsync(string key, string val)
+        {
+            string url = string.Format("{0}://{1}/postman/store?cmd=SET&key={2}&val={3}",
+                (useSSL ? "https" : "http"),
+                host,
+                Uri.EscapeDataString(key),
+                Uri.EscapeDataString(val));
+            if(secureToken != "")
+                url += "&tkn=" + Uri.EscapeDataString(secureToken);
+
+            UnityWebRequest request = UnityWebRequest.Get(url);
+            await request.SendWebRequest();
 
             ResultMessageData responce = new ResultMessageData("", "");
 #if UNITY_2020_1_OR_NEWER
@@ -474,9 +557,12 @@ namespace Postman
 
         public ResultMessageData StoreHasKeyAsData(string key)
         {
-            string url = string.Format("{0}://{1}/postman/store?cmd=HAS&key={2}", (useSSL ? "https" : "http"), host, key);
+            string url = string.Format("{0}://{1}/postman/store?cmd=HAS&key={2}",
+                (useSSL ? "https" : "http"),
+                host,
+                Uri.EscapeDataString(key));
             if(secureToken != "")
-                url += "&tkn=" + secureToken;
+                url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
             UnityWebRequest request = UnityWebRequest.Get(url);
             request.SendWebRequest();
@@ -508,9 +594,12 @@ namespace Postman
 #region store delete
         public void StoreDelete(string key)
         {
-            string url = string.Format("{0}://{1}/postman/store?cmd=DEL&key={2}", (useSSL ? "https" : "http"), host, key);
+            string url = string.Format("{0}://{1}/postman/store?cmd=DEL&key={2}",
+                (useSSL ? "https" : "http"),
+                host,
+                Uri.EscapeDataString(key));
             if(secureToken != "")
-                url += "&tkn=" + secureToken;
+                url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
             UnityWebRequest request = UnityWebRequest.Get(url);
             request.SendWebRequest();

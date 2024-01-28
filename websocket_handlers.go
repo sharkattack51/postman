@@ -75,13 +75,16 @@ func Connected(conn *golem.Connection, r *http.Request) {
 	if _, exist := conns[r.RemoteAddr]; exist {
 		log.Println(fmt.Sprintf("> [Warning] %s is already connecting", remote))
 		logger.Log(WARN, "already connecting", logrus.Fields{"method": "connect", "from": remote})
-	}
 
-	conns[r.RemoteAddr] = conn
+		time.Sleep(time.Millisecond * 1)
+		conn.Close()
+	} else {
+		conns[r.RemoteAddr] = conn
 
-	log.Println(fmt.Sprintf("> [Connected] from %s", remote))
-	if logger != nil {
-		logger.Log(INFO, "new connection", logrus.Fields{"method": "connect", "from": remote})
+		log.Println(fmt.Sprintf("> [Connected] from %s", remote))
+		if logger != nil {
+			logger.Log(INFO, "new connection", logrus.Fields{"method": "connect", "from": remote})
+		}
 	}
 }
 
