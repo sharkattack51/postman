@@ -19,6 +19,8 @@ import (
 //
 
 func PublishHandler(w http.ResponseWriter, r *http.Request) {
+	AllowCORS(w)
+
 	if !IpValidation(r.RemoteAddr) {
 		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
 		if logger != nil {
@@ -123,6 +125,8 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
+	AllowCORS(w)
+
 	if !IpValidation(r.RemoteAddr) {
 		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
 		if logger != nil {
@@ -162,6 +166,8 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StatusPpHandler(w http.ResponseWriter, r *http.Request) {
+	AllowCORS(w)
+
 	if !IpValidation(r.RemoteAddr) {
 		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
 		if logger != nil {
@@ -201,6 +207,8 @@ func StatusPpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StoreHandler(w http.ResponseWriter, r *http.Request) {
+	AllowCORS(w)
+
 	if !IpValidation(r.RemoteAddr) {
 		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
 		if logger != nil {
@@ -415,6 +423,8 @@ func SecureHandler(r *http.Request) *SecureMessage {
 }
 
 func FileHandler(w http.ResponseWriter, r *http.Request) {
+	AllowCORS(w)
+
 	if !IpValidation(r.RemoteAddr) {
 		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
 		if logger != nil {
@@ -559,6 +569,8 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PluginHandler(w http.ResponseWriter, r *http.Request) {
+	AllowCORS(w)
+
 	if !IpValidation(r.RemoteAddr) {
 		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
 		if logger != nil {
@@ -671,4 +683,10 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 		j, _ := json.Marshal(res)
 		fmt.Fprint(w, string(j))
 	}
+}
+
+func AllowCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 }
