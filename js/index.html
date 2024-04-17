@@ -12,7 +12,7 @@
         /*
         * postman events
         */
-        let postman = new Postman("127.0.0.1:8800");
+        let postman = new Postman("127.0.0.1:8800", false, true);
         postman.on("pingpong", function() {
             console.log("pong");
         });

@@ -1,8 +1,8 @@
 /*
     // Postman Client JS
 
-    let postman = new Postman(host, true);
-    
+    let postman = new Postman(host, true, true);
+
     postman.on("open", () => {
         postman.subscribe("channel");
     });
@@ -26,24 +26,25 @@
 */
 
 class Postman {
-    constructor(serverIp, ssl) {
+    constructor(serverIp, ssl = false, connectOnClose = true) {
         this.url = serverIp + "/postman";
         if(ssl)
             this.url = "wss://" + this.url;
         else
             this.url = "ws://" + this.url;
-        
+
         this.ws = new WebSocket(this.url);
 
-		this.ws.onopen = function(we) {
+		this.onopen = function(we) {
             let e = new Event("on_postman_open");
             document.dispatchEvent(e);
         };
-        
-		this.ws.onmessage = function(we) {
+        this.ws.onopen = this.onopen;
+
+		this.onmessage = function(we) {
             if(we.data == "" || we.data.length < 8)
                 return;
-            
+
             let head = we.data.substring(0, 8);
             if(head != "message ")
                 return;
@@ -58,16 +59,36 @@ class Postman {
                 document.dispatchEvent(e);
             }
         }
-        
-		this.ws.onclose = function(we) {
+        this.ws.onmessage = this.onmessage;
+
+		this.onclose = (we) => {
             let e = new Event("on_postman_close");
             document.dispatchEvent(e);
+
+            if(connectOnClose) {
+                (async () => {
+                    while(this.ws == undefined || this.ws.readyState !== 1) {
+                        this.ws = new WebSocket(this.url);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
+                    this.ws.onopen = this.onopen;
+                    this.ws.onmessage = this.onmessage;
+                    this.ws.onclose = this.onclose;
+                    this.ws.onerror = this.onerror;
+
+                    let e = new Event("on_postman_open");
+                    document.dispatchEvent(e);
+                })();
+            }
         };
-        
-		this.ws.onerror = function(we) {
+        this.ws.onclose = this.onclose;
+
+		this.onerror = function(we) {
             let e = new Event("on_postman_error");
             document.dispatchEvent(e);
         };
+        this.ws.onerror = this.onerror;
     }
 
     on(eventType, func) {
@@ -131,5 +152,9 @@ class Postman {
         if(this.ws.readyState === 1) {
             this.ws.close();
         }
+    }
+
+    isConnect() {
+        return this.ws.readyState === 1;
     }
 }
