@@ -26,7 +26,7 @@
 */
 
 class Postman {
-    constructor(serverIp, ssl = false, connectOnClose = true) {
+    constructor(serverIp, ssl = false, reconnectOnClose = true) {
         this.url = serverIp + "/postman";
         if(ssl)
             this.url = "wss://" + this.url;
@@ -65,7 +65,7 @@ class Postman {
             let e = new Event("on_postman_close");
             document.dispatchEvent(e);
 
-            if(connectOnClose) {
+            if(reconnectOnClose) {
                 (async () => {
                     while(this.ws == undefined || this.ws.readyState !== 1) {
                         this.ws = new WebSocket(this.url);
