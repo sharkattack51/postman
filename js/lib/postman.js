@@ -35,13 +35,13 @@ class Postman {
 
         this.ws = new WebSocket(this.url);
 
-		this.onopen = function(we) {
+        this.onopen = function(we) {
             let e = new Event("on_postman_open");
             document.dispatchEvent(e);
         };
         this.ws.onopen = this.onopen;
 
-		this.onmessage = function(we) {
+        this.onmessage = function(we) {
             if(we.data == "" || we.data.length < 8)
                 return;
 
@@ -61,7 +61,7 @@ class Postman {
         }
         this.ws.onmessage = this.onmessage;
 
-		this.onclose = (we) => {
+        this.onclose = (we) => {
             let e = new Event("on_postman_close");
             document.dispatchEvent(e);
 
@@ -84,7 +84,7 @@ class Postman {
         };
         this.ws.onclose = this.onclose;
 
-		this.onerror = function(we) {
+        this.onerror = function(we) {
             let e = new Event("on_postman_error");
             document.dispatchEvent(e);
         };
