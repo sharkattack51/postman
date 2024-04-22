@@ -70,20 +70,18 @@ func Connected(conn *golem.Connection, r *http.Request) {
 		}
 	}
 
-	remote := SplitAddr(r.RemoteAddr)
-
 	if _, exist := conns[r.RemoteAddr]; exist {
-		log.Println(fmt.Sprintf("> [Warning] %s is already connecting", remote))
-		logger.Log(WARN, "already connecting", logrus.Fields{"method": "connect", "from": remote})
+		log.Println(fmt.Sprintf("> [Warning] %s is already connecting", r.RemoteAddr))
+		logger.Log(WARN, "already connecting", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 
 		time.Sleep(time.Millisecond * 1)
 		conn.Close()
 	} else {
 		conns[r.RemoteAddr] = conn
 
-		log.Println(fmt.Sprintf("> [Connected] from %s", remote))
+		log.Println(fmt.Sprintf("> [Connected] from %s", r.RemoteAddr))
 		if logger != nil {
-			logger.Log(INFO, "new connection", logrus.Fields{"method": "connect", "from": remote})
+			logger.Log(INFO, "new connection", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
 	}
 }
@@ -93,10 +91,10 @@ func Ping(conn *golem.Connection) {
 }
 
 func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
-	remote := GetRemoteIPfromConn(conn)
-	infoAtRemote := remote
+	remoteAddr := conn.GetSocket().RemoteAddr().String()
+	infoAtRemote := remoteAddr
 	if msg.Info() != "" {
-		infoAtRemote = msg.Info() + "@" + remote
+		infoAtRemote = msg.Info() + "@" + remoteAddr
 	}
 
 	if msg.Channel() == "" {
@@ -130,17 +128,17 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 	}
 
 	if msg.Info() != "" {
-		cliInfos[remote] = msg.Info()
+		cliInfos[remoteAddr] = msg.Info()
 	}
 
 	roomMg.Join(msg.Channel(), conn)
 }
 
 func Unsubscribe(conn *golem.Connection, msg *SubscribeMessage) {
-	remote := GetRemoteIPfromConn(conn)
-	infoAtRemote := remote
+	remoteAddr := conn.GetSocket().RemoteAddr().String()
+	infoAtRemote := remoteAddr
 	if msg.Info() != "" {
-		infoAtRemote = msg.Info() + "@" + remote
+		infoAtRemote = msg.Info() + "@" + remoteAddr
 	}
 
 	if msg.Channel() == "" {
@@ -156,20 +154,20 @@ func Unsubscribe(conn *golem.Connection, msg *SubscribeMessage) {
 		logger.Log(INFO, "unsubscribe", logrus.Fields{"method": "unsubscribe", "channel": msg.Channel(), "from": infoAtRemote})
 	}
 
-	if _, exist := cliInfos[remote]; exist {
-		delete(cliInfos, remote)
+	if _, exist := cliInfos[remoteAddr]; exist {
+		delete(cliInfos, remoteAddr)
 	}
 
 	roomMg.Leave(msg.Channel(), conn)
 }
 
 func Publish(conn *golem.Connection, msg *PublishMessage) {
-	remote := GetRemoteIPfromConn(conn)
-	infoAtRemote := remote
-	if info, exist := cliInfos[remote]; exist {
-		infoAtRemote = info + "@" + remote
+	remoteAddr := conn.GetSocket().RemoteAddr().String()
+	infoAtRemote := remoteAddr
+	if info, exist := cliInfos[remoteAddr]; exist {
+		infoAtRemote = info + "@" + remoteAddr
 	} else if msg.Info() != "" {
-		infoAtRemote = msg.Info() + "@" + remote
+		infoAtRemote = msg.Info() + "@" + remoteAddr
 	}
 
 	if msg.Channel() == "" {
@@ -208,13 +206,16 @@ func Status(conn *golem.Connection) {
 }
 
 func Closed(conn *golem.Connection) {
-	remote := GetRemoteIPfromConn(conn)
-	if remote == "" {
-		remote = SplitAddr(conn.GetSocket().RemoteAddr().String())
+	remoteAddr := conn.GetSocket().RemoteAddr().String()
+	if _, exist := conns[remoteAddr]; exist {
+		delete(conns, remoteAddr)
 	}
-	infoAtRemote := remote
-	if info, exist := cliInfos[remote]; exist {
-		infoAtRemote = info + "@" + remote
+
+	infoAtRemote := remoteAddr
+	if info, exist := cliInfos[remoteAddr]; exist {
+		delete(cliInfos, remoteAddr)
+
+		infoAtRemote = info + "@" + remoteAddr
 	}
 
 	log.Println(fmt.Sprintf("> [Closed] from %s", infoAtRemote))
