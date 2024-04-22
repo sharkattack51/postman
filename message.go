@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/sharkattack51/golem"
 )
@@ -176,21 +175,22 @@ func NewStatusMessage(rm *golem.RoomManager) *StatusMessage {
 
 	if rm != nil {
 		for i, ri := range rm.GetRoomInfos() {
-			addrs := []string{}
+			remoteAddrs := []string{}
 			for _, c := range ri.Room.GetMembers() {
-				addr := strings.Split(c.GetSocket().RemoteAddr().String(), ":")[0]
-				if info, exist := cliInfos[addr]; exist {
-					addr = info + "@" + addr
+				remoteAddr := c.GetSocket().RemoteAddr().String()
+				infoAtRemote := remoteAddr
+				if info, exist := cliInfos[remoteAddr]; exist {
+					infoAtRemote = info + "@" + remoteAddr
 				}
 
 				if TARGET_PAAS {
 					// mask ip address
-					addr = fmt.Sprintf("conn_%d", i)
+					infoAtRemote = fmt.Sprintf("conn_%d", i)
 				}
 
-				addrs = append(addrs, addr)
+				remoteAddrs = append(remoteAddrs, infoAtRemote)
 			}
-			channels[ri.Topic] = addrs
+			channels[ri.Topic] = remoteAddrs
 		}
 	}
 
