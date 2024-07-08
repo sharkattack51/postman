@@ -76,6 +76,8 @@ func Connected(conn *golem.Connection, r *http.Request) {
 			logger.Log(WARN, "already connecting", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
 
+		conns[r.RemoteAddr].Close()
+
 		go func(c *golem.Connection) {
 			time.Sleep(time.Millisecond * 1)
 			c.Close()
