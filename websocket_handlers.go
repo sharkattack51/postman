@@ -42,7 +42,7 @@ func Connected(conn *golem.Connection, r *http.Request) {
 
 		go func(c *golem.Connection) {
 			time.Sleep(time.Millisecond * 1)
-			conn.Close()
+			c.Close()
 		}(conn)
 
 		return
@@ -63,7 +63,7 @@ func Connected(conn *golem.Connection, r *http.Request) {
 
 			go func(c *golem.Connection) {
 				time.Sleep(time.Millisecond * 1)
-				conn.Close()
+				c.Close()
 			}(conn)
 
 			return
@@ -78,7 +78,7 @@ func Connected(conn *golem.Connection, r *http.Request) {
 
 		go func(c *golem.Connection) {
 			time.Sleep(time.Millisecond * 1)
-			conn.Close()
+			c.Close()
 		}(conn)
 	} else {
 		conns[r.RemoteAddr] = conn
