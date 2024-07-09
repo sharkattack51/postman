@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	VERSION         = "1.3.3"
+	VERSION         = "1.3.3f"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -143,19 +143,19 @@ func main() {
 		if opts.UseStoreApi {
 			kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
 			if err != nil {
-				log.Println(fmt.Sprintf("> [Warning] could not open \"%s\": %s", DB_FILE, err))
+				log.Printf("> [Warning] could not open \"%s\": %s\n", DB_FILE, err)
 
 				// remove .db directory
 				err = os.RemoveAll(DB_FILE)
 				if err != nil {
-					log.Println(fmt.Sprintf("> [Warning] could not remove \"%s\": %s", DB_FILE, err))
+					log.Printf("> [Warning] could not remove \"%s\": %s\n", DB_FILE, err)
 				} else {
 					// one more try
 					kvsDB, err = leveldb.OpenFile(DB_FILE, nil)
 					if err != nil {
-						log.Println(fmt.Sprintf("> [Warning] could not open \"%s\": %s", DB_FILE, err))
+						log.Printf("> [Warning] could not open \"%s\": %s\n", DB_FILE, err)
 					} else {
-						log.Println(fmt.Sprintf("> [Warning] recreated \"%s\"", DB_FILE))
+						log.Printf("> [Warning] recreated \"%s\"\n", DB_FILE)
 					}
 				}
 			}
@@ -167,14 +167,14 @@ func main() {
 			if !IsExist(SERVE_FILES_DIR) {
 				err = os.Mkdir(SERVE_FILES_DIR, 0777)
 				if err != nil {
-					log.Println(fmt.Sprintf("> [Warning] could not create \"%s\" directory", SERVE_FILES_DIR))
+					log.Printf("> [Warning] could not create \"%s\" directory\n", SERVE_FILES_DIR)
 				}
 			}
 		}
 	}
 
 	fmt.Println("===================================================")
-	fmt.Println(fmt.Sprintf("[[ Postman v%s ]]", VERSION))
+	fmt.Printf("[[ Postman v%s ]]\n", VERSION)
 	fmt.Println(SecureSprintf(fmt.Sprintf("websocket server start... ws://%s:%s/postman", host, opts.Port)+"%s", "?tkn=TOKEN"))
 	fmt.Println("")
 	fmt.Println("=== Websocket API ===")
@@ -190,7 +190,7 @@ func main() {
 	fmt.Println("<- \"publish {\"ch\":\"CHANNEL\",\"msg\":\"MESSAGE\",[\"tag\":\"TAG\",\"ext\":\"OTHER\"]}\"")
 	fmt.Println("")
 	fmt.Println("=== Http API ===")
-	fmt.Println(fmt.Sprintf("http://%s:%s/postman", host, opts.Port))
+	fmt.Printf("http://%s:%s/postman\n", host, opts.Port)
 	fmt.Println("[Status]")
 	fmt.Println(SecureSprintf("(GET) /status%s", "?tkn=TOKEN"))
 	fmt.Println(SecureSprintf("(GET) /status_pp%s", "?tkn=TOKEN"))

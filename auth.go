@@ -1,34 +1,29 @@
 package main
 
 import (
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt/v5"
 )
 
-type Auth struct {
-	Key string `json:"key"`
-	jwt.StandardClaims
-}
-
 func GenerateToken(scrt string, key string) (string, error) {
-	tkn := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), &Auth{
-		Key: key,
+	tkn := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.MapClaims{
+		"key": key,
 	})
-	token, err := tkn.SignedString([]byte(scrt))
+	tknStr, err := tkn.SignedString([]byte(scrt))
 	if err != nil {
 		return "", err
 	}
 
-	return token, nil
+	return tknStr, nil
 }
 
-func Authenticate(scrt string, token string, key string) (bool, error) {
-	auth := Auth{}
-	_, err := jwt.ParseWithClaims(token, &auth, func(tkn *jwt.Token) (interface{}, error) {
+func Authenticate(scrt string, tknStr string, key string) (bool, error) {
+	tkn, err := jwt.Parse(tknStr, func(tkn *jwt.Token) (interface{}, error) {
 		return []byte(scrt), nil
 	})
 	if err != nil {
 		return false, err
 	}
 
-	return auth.Key == key, nil
+	claims := tkn.Claims.(jwt.MapClaims)
+	return claims["key"].(string) == key, nil
 }

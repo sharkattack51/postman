@@ -22,7 +22,7 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 	AllowCORS(w)
 
 	if !IpValidation(r.RemoteAddr) {
-		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
+		log.Printf("> [Warning] remote ip blocked from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -37,7 +37,7 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 		smsg := SecureHandler(r)
 		res, err := Authenticate(secret, smsg.Token(), host)
 		if !res || err != nil {
-			log.Println(fmt.Sprintf("> [Warning] authentication failed from %s", r.RemoteAddr))
+			log.Printf("> [Warning] authentication failed from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "publish", "token": smsg.Token(), "from": r.RemoteAddr})
 			}
@@ -87,7 +87,7 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if msg.Channel() == "" {
-		log.Println(fmt.Sprintf("> [Warning] publish channel is empty from %s", infoAtRemote))
+		log.Printf("> [Warning] publish channel is empty from %s\n", infoAtRemote)
 		if logger != nil {
 			logger.Log(WARN, "publish channel is empty", logrus.Fields{"method": "publish", "channel": msg.Channel(), "message": msg.Message(), "tag": msg.Tag(), "extention": msg.Extention(), "from": infoAtRemote})
 		}
@@ -96,7 +96,7 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 		j, _ := json.Marshal(res)
 		fmt.Fprint(w, string(j))
 	} else {
-		log.Println(fmt.Sprintf("> [Publish] ch:%s msg:%s from %s", msg.Channel(), msg.BuildLogString(), infoAtRemote))
+		log.Printf("> [Publish] ch:%s msg:%s from %s\n", msg.Channel(), msg.BuildLogString(), infoAtRemote)
 		if logger != nil {
 			logger.Log(INFO, "new publish", logrus.Fields{"method": "publish", "channel": msg.Channel(), "message": msg.Message(), "tag": msg.Tag(), "extention": msg.Extention(), "from": infoAtRemote})
 		}
@@ -128,7 +128,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	AllowCORS(w)
 
 	if !IpValidation(r.RemoteAddr) {
-		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
+		log.Printf("> [Warning] remote ip blocked from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -143,7 +143,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		smsg := SecureHandler(r)
 		res, err := Authenticate(secret, smsg.Token(), host)
 		if !res || err != nil {
-			log.Println(fmt.Sprintf("> [Warning] authentication failed from %s", r.RemoteAddr))
+			log.Printf("> [Warning] authentication failed from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "status", "token": smsg.Token(), "from": r.RemoteAddr})
 			}
@@ -155,7 +155,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Println(fmt.Sprintf("> [Status] get status from %s", r.RemoteAddr))
+	log.Printf("> [Status] get status from %s\n", r.RemoteAddr)
 	if logger != nil {
 		logger.Log(INFO, "get status", logrus.Fields{"method": "status", "from": r.RemoteAddr})
 	}
@@ -169,7 +169,7 @@ func StatusPpHandler(w http.ResponseWriter, r *http.Request) {
 	AllowCORS(w)
 
 	if !IpValidation(r.RemoteAddr) {
-		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
+		log.Printf("> [Warning] remote ip blocked from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -184,7 +184,7 @@ func StatusPpHandler(w http.ResponseWriter, r *http.Request) {
 		smsg := SecureHandler(r)
 		res, err := Authenticate(secret, smsg.Token(), host)
 		if !res || err != nil {
-			log.Println(fmt.Sprintf("> [Warning] authentication failed from %s", r.RemoteAddr))
+			log.Printf("> [Warning] authentication failed from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "status_pp", "token": smsg.Token(), "from": r.RemoteAddr})
 			}
@@ -196,7 +196,7 @@ func StatusPpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Println(fmt.Sprintf("> [Status] get status pp from %s", r.RemoteAddr))
+	log.Printf("> [Status] get status pp from %s\n", r.RemoteAddr)
 	if logger != nil {
 		logger.Log(INFO, "get status pp", logrus.Fields{"method": "status_pp", "from": r.RemoteAddr})
 	}
@@ -210,7 +210,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 	AllowCORS(w)
 
 	if !IpValidation(r.RemoteAddr) {
-		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
+		log.Printf("> [Warning] remote ip blocked from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -225,7 +225,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 		smsg := SecureHandler(r)
 		res, err := Authenticate(secret, smsg.Token(), host)
 		if !res || err != nil {
-			log.Println(fmt.Sprintf("> [Warning] authentication failed from %s", r.RemoteAddr))
+			log.Printf("> [Warning] authentication failed from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "store", "token": smsg.Token(), "from": r.RemoteAddr})
 			}
@@ -238,7 +238,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !opts.UseStoreApi || kvsDB == nil {
-		log.Println(fmt.Sprintf("> [Warning] key-value store api is disable from %s", r.RemoteAddr))
+		log.Printf("> [Warning] key-value store api is disable from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "key-value store api is disable", logrus.Fields{"method": "file", "from": r.RemoteAddr})
 		}
@@ -284,7 +284,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 		if msg.Key() != "" {
 			switch strings.ToLower(msg.Command()) {
 			case "get":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s from %s", msg.Command(), msg.Key(), r.RemoteAddr))
+				log.Printf("> [Store] cmd:%s key:%s from %s\n", msg.Command(), msg.Key(), r.RemoteAddr)
 				if logger != nil {
 					logger.Log(INFO, "request store get", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "from": r.RemoteAddr})
 				}
@@ -302,7 +302,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, string(j))
 
 			case "set":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s val:%s from %s", msg.Command(), msg.Key(), msg.Value(), r.RemoteAddr))
+				log.Printf("> [Store] cmd:%s key:%s val:%s from %s\n", msg.Command(), msg.Key(), msg.Value(), r.RemoteAddr)
 				if logger != nil {
 					logger.Log(INFO, "request store set", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "val": msg.Value(), "from": r.RemoteAddr})
 				}
@@ -320,7 +320,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, string(j))
 
 			case "has":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s from %s", msg.Command(), msg.Key(), r.RemoteAddr))
+				log.Printf("> [Store] cmd:%s key:%s from %s\n", msg.Command(), msg.Key(), r.RemoteAddr)
 				if logger != nil {
 					logger.Log(INFO, "request store haskey", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "from": r.RemoteAddr})
 				}
@@ -338,7 +338,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, string(j))
 
 			case "del":
-				log.Println(fmt.Sprintf("> [Store] cmd:%s key:%s from %s", msg.Command(), msg.Key(), r.RemoteAddr))
+				log.Printf("> [Store] cmd:%s key:%s from %s\n", msg.Command(), msg.Key(), r.RemoteAddr)
 				if logger != nil {
 					logger.Log(INFO, "request store delete", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "from": r.RemoteAddr})
 				}
@@ -356,7 +356,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, string(j))
 
 			default:
-				log.Println(fmt.Sprintf("> [Warning] store command nou found from %s", r.RemoteAddr))
+				log.Printf("> [Warning] store command nou found from %s\n", r.RemoteAddr)
 				if logger != nil {
 					logger.Log(WARN, "command not found", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "value": msg.Value(), "from": r.RemoteAddr})
 				}
@@ -366,7 +366,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, string(j))
 			}
 		} else {
-			log.Println(fmt.Sprintf("> [Warning] store key is empty from %s", r.RemoteAddr))
+			log.Printf("> [Warning] store key is empty from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "store key is empty", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "value": msg.Value(), "from": r.RemoteAddr})
 			}
@@ -376,7 +376,7 @@ func StoreHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, string(j))
 		}
 	} else {
-		log.Println(fmt.Sprintf("> [Warning] store command is empty from %s", r.RemoteAddr))
+		log.Printf("> [Warning] store command is empty from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "store command is empty", logrus.Fields{"method": "store", "command": msg.Command(), "key": msg.Key(), "value": msg.Value(), "from": r.RemoteAddr})
 		}
@@ -426,7 +426,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 	AllowCORS(w)
 
 	if !IpValidation(r.RemoteAddr) {
-		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
+		log.Printf("> [Warning] remote ip blocked from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -441,7 +441,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 		smsg := SecureHandler(r)
 		res, err := Authenticate(secret, smsg.Token(), host)
 		if !res || err != nil {
-			log.Println(fmt.Sprintf("> [Warning] authentication failed from %s", r.RemoteAddr))
+			log.Printf("> [Warning] authentication failed from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "store", "token": smsg.Token(), "from": r.RemoteAddr})
 			}
@@ -454,7 +454,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !opts.UseFileApi {
-		log.Println(fmt.Sprintf("> [Warning] file server api is disable from %s", r.RemoteAddr))
+		log.Printf("> [Warning] file server api is disable from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "file server api is disable", logrus.Fields{"method": "file", "from": r.RemoteAddr})
 		}
@@ -466,7 +466,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsExist(SERVE_FILES_DIR) {
-		log.Println(fmt.Sprintf("> [Warning] directory not found \"%s\" from %s", SERVE_FILES_DIR, r.RemoteAddr))
+		log.Printf("> [Warning] directory not found \"%s\" from %s\n", SERVE_FILES_DIR, r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, fmt.Sprintf("directory not found \"%s\"", SERVE_FILES_DIR), logrus.Fields{"method": "file post", "from": r.RemoteAddr})
 		}
@@ -479,10 +479,8 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		formFile, header, err := r.FormFile("file")
-		defer formFile.Close()
-
 		if err != nil {
-			log.Println(fmt.Sprintf("> [Warning] no form file data from %s", r.RemoteAddr))
+			log.Printf("> [Warning] no form file data from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "no form file data", logrus.Fields{"method": "file post", "from": r.RemoteAddr})
 			}
@@ -492,11 +490,12 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, string(j))
 			return
 		}
+		defer formFile.Close()
 
 		path := filepath.Join(SERVE_FILES_DIR, header.Filename)
 		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
-			log.Println(fmt.Sprintf("> [Warning] could not open file \"%s\" from %s", header.Filename, r.RemoteAddr))
+			log.Printf("> [Warning] could not open file \"%s\" from %s\n", header.Filename, r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "could not open file", logrus.Fields{"method": "file post", "file": header.Filename, "from": r.RemoteAddr})
 			}
@@ -524,9 +523,9 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			offset += int64(n)
 		}
 
-		log.Println(fmt.Sprintf("> [File] new file posted \"%s\" from %s", header.Filename, r.RemoteAddr))
+		log.Printf("> [File] new file posted \"%s\" from %s\n", header.Filename, r.RemoteAddr)
 		if logger != nil {
-			logger.Log(INFO, fmt.Sprintf("new file posted"), logrus.Fields{"method": "file post", "file": header.Filename, "from": r.RemoteAddr})
+			logger.Log(INFO, "new file posted", logrus.Fields{"method": "file post", "file": header.Filename, "from": r.RemoteAddr})
 		}
 
 		msg := NewResultMessage("success", "")
@@ -547,7 +546,7 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(SERVE_FILES_DIR, pathToFile)
 
 		if !IsExist(path) {
-			log.Println(fmt.Sprintf("> [Warning] file not found \"%s\" from %s", pathToFile, r.RemoteAddr))
+			log.Printf("> [Warning] file not found \"%s\" from %s\n", pathToFile, r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "file not found", logrus.Fields{"method": "file get", "name": pathToFile, "from": r.RemoteAddr})
 			}
@@ -558,9 +557,9 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Println(fmt.Sprintf("> [File] serve access \"%s\" from %s", pathToFile, r.RemoteAddr))
+		log.Printf("> [File] serve access \"%s\" from %s\n", pathToFile, r.RemoteAddr)
 		if logger != nil {
-			logger.Log(INFO, fmt.Sprintf("file served"), logrus.Fields{"method": "file get", "file": pathToFile, "from": r.RemoteAddr})
+			logger.Log(INFO, "file served", logrus.Fields{"method": "file get", "file": pathToFile, "from": r.RemoteAddr})
 		}
 
 		// return file
@@ -572,7 +571,7 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 	AllowCORS(w)
 
 	if !IpValidation(r.RemoteAddr) {
-		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
+		log.Printf("> [Warning] remote ip blocked from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -587,7 +586,7 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 		smsg := SecureHandler(r)
 		res, err := Authenticate(secret, smsg.Token(), host)
 		if !res || err != nil {
-			log.Println(fmt.Sprintf("> [Warning] authentication failed from %s", r.RemoteAddr))
+			log.Printf("> [Warning] authentication failed from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "store", "token": smsg.Token(), "from": r.RemoteAddr})
 			}
@@ -600,7 +599,7 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !opts.UsePluginApi {
-		log.Println(fmt.Sprintf("> [Warning] plugin api is disable from %s", r.RemoteAddr))
+		log.Printf("> [Warning] plugin api is disable from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "plugin api is disable", logrus.Fields{"method": "plugin", "from": r.RemoteAddr})
 		}
@@ -645,7 +644,7 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 	if msg.Command() != "" {
 		p, err := LoadPlugin()
 		if err != nil {
-			log.Println(fmt.Sprintf("> [Warning] plugin can't loaded from %s", r.RemoteAddr))
+			log.Printf("> [Warning] plugin can't loaded from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "plugin can't loaded", logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
 			}
@@ -656,15 +655,15 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if proc, ok := p.Plugins[msg.Command()]; ok {
-			log.Println(fmt.Sprintf("> [Plugin] call plugin \"%s\" from %s", msg.Command(), r.RemoteAddr))
+			log.Printf("> [Plugin] call plugin \"%s\" from %s\n", msg.Command(), r.RemoteAddr)
 			if logger != nil {
-				logger.Log(INFO, fmt.Sprintf("call plugin"), logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
+				logger.Log(INFO, "call plugin", logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
 			}
 
 			ret := ExecPlugin(proc.Proc, proc.Args)
 			fmt.Fprint(w, ret)
 		} else {
-			log.Println(fmt.Sprintf("> [Warning] plugin command not found from %s", r.RemoteAddr))
+			log.Printf("> [Warning] plugin command not found from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "plugin command not found", logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
 			}
@@ -674,7 +673,7 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, string(j))
 		}
 	} else {
-		log.Println(fmt.Sprintf("> [Warning] plugin command is empty from %s", r.RemoteAddr))
+		log.Printf("> [Warning] plugin command is empty from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "plugin command is empty", logrus.Fields{"method": "plugin", "command": msg.Command(), "from": r.RemoteAddr})
 		}

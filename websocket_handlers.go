@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -31,7 +30,7 @@ func CreateRouter() *golem.Router {
 
 func Connected(conn *golem.Connection, r *http.Request) {
 	if !IpValidation(r.RemoteAddr) {
-		log.Println(fmt.Sprintf("> [Warning] remote ip blocked from %s", r.RemoteAddr))
+		log.Printf("> [Warning] remote ip blocked from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "remote ip blocked", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -52,7 +51,7 @@ func Connected(conn *golem.Connection, r *http.Request) {
 		smsg := SecureHandler(r)
 		res, err := Authenticate(secret, smsg.Token(), host)
 		if !res || err != nil {
-			log.Println(fmt.Sprintf("> [Warning] authentication failed from %s", r.RemoteAddr))
+			log.Printf("> [Warning] authentication failed from %s\n", r.RemoteAddr)
 			if logger != nil {
 				logger.Log(WARN, "authentication failed", logrus.Fields{"method": "connect", "token": smsg.Token(), "from": r.RemoteAddr})
 			}
@@ -71,7 +70,7 @@ func Connected(conn *golem.Connection, r *http.Request) {
 	}
 
 	if _, exist := conns[r.RemoteAddr]; exist {
-		log.Println(fmt.Sprintf("> [Warning] %s is already connecting", r.RemoteAddr))
+		log.Printf("> [Warning] %s is already connecting\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "already connecting", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -85,7 +84,7 @@ func Connected(conn *golem.Connection, r *http.Request) {
 	} else {
 		conns[r.RemoteAddr] = conn
 
-		log.Println(fmt.Sprintf("> [Connected] from %s", r.RemoteAddr))
+		log.Printf("> [Connected] from %s\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(INFO, "new connection", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
@@ -104,7 +103,7 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 	}
 
 	if msg.Channel() == "" {
-		log.Println(fmt.Sprintf("> [Warning] subscribe channel is empty from %s", infoAtRemote))
+		log.Printf("> [Warning] subscribe channel is empty from %s\n", infoAtRemote)
 		if logger != nil {
 			logger.Log(WARN, "subscribe channel is empty", logrus.Fields{"method": "subscribe", "channel": msg.Channel(), "from": infoAtRemote})
 		}
@@ -120,7 +119,7 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 			}
 		}
 		if !contain {
-			log.Println(fmt.Sprintf("> [Warning] whitelist does not contain subscribe channel from %s", infoAtRemote))
+			log.Printf("> [Warning] whitelist does not contain subscribe channel from %s\n", infoAtRemote)
 			if logger != nil {
 				logger.Log(WARN, "whitelist does not contain subscribe channel", logrus.Fields{"method": "subscribe", "channel": msg.Channel(), "from": infoAtRemote})
 			}
@@ -128,7 +127,7 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 		}
 	}
 
-	log.Println(fmt.Sprintf("> [Subscribe] ch:%s from %s", msg.Channel(), infoAtRemote))
+	log.Printf("> [Subscribe] ch:%s from %s\n", msg.Channel(), infoAtRemote)
 	if logger != nil {
 		logger.Log(INFO, "new subscribe", logrus.Fields{"method": "subscribe", "channel": msg.Channel(), "from": infoAtRemote})
 	}
@@ -148,22 +147,19 @@ func Unsubscribe(conn *golem.Connection, msg *SubscribeMessage) {
 	}
 
 	if msg.Channel() == "" {
-		log.Println(fmt.Sprintf("> [Warning] unsubscribe channel is empty from %s", infoAtRemote))
+		log.Printf("> [Warning] unsubscribe channel is empty from %s\n", infoAtRemote)
 		if logger != nil {
 			logger.Log(WARN, "unsubscribe channel is empty", logrus.Fields{"method": "unsubscribe", "channel": msg.Channel(), "from": infoAtRemote})
 		}
 		return
 	}
 
-	log.Println(fmt.Sprintf("> [Unsubscribe] ch:%s from %s", msg.Channel(), infoAtRemote))
+	log.Printf("> [Unsubscribe] ch:%s from %s\n", msg.Channel(), infoAtRemote)
 	if logger != nil {
 		logger.Log(INFO, "unsubscribe", logrus.Fields{"method": "unsubscribe", "channel": msg.Channel(), "from": infoAtRemote})
 	}
 
-	if _, exist := cliInfos[remoteAddr]; exist {
-		delete(cliInfos, remoteAddr)
-	}
-
+	delete(cliInfos, remoteAddr)
 	roomMg.Leave(msg.Channel(), conn)
 }
 
@@ -177,14 +173,14 @@ func Publish(conn *golem.Connection, msg *PublishMessage) {
 	}
 
 	if msg.Channel() == "" {
-		log.Println(fmt.Sprintf("> [Warning] publish channel is empty from %s", infoAtRemote))
+		log.Printf("> [Warning] publish channel is empty from %s\n", infoAtRemote)
 		if logger != nil {
 			logger.Log(WARN, "publish channel is empty", logrus.Fields{"method": "publish", "channel": msg.Channel(), "message": msg.Message(), "tag": msg.Tag(), "extention": msg.Extention(), "from": infoAtRemote})
 		}
 		return
 	}
 
-	log.Println(fmt.Sprintf("> [Publish] ch:%s msg:%s from %s", msg.Channel(), msg.BuildLogString(), infoAtRemote))
+	log.Printf("> [Publish] ch:%s msg:%s from %s\n", msg.Channel(), msg.BuildLogString(), infoAtRemote)
 	if logger != nil {
 		logger.Log(INFO, "new publish", logrus.Fields{"method": "publish", "channel": msg.Channel(), "message": msg.Message(), "tag": msg.Tag(), "extention": msg.Extention(), "from": infoAtRemote})
 	}
@@ -213,9 +209,8 @@ func Status(conn *golem.Connection) {
 
 func Closed(conn *golem.Connection) {
 	remoteAddr := conn.GetSocket().RemoteAddr().String()
-	if _, exist := conns[remoteAddr]; exist {
-		delete(conns, remoteAddr)
-	}
+
+	delete(conns, remoteAddr)
 
 	infoAtRemote := remoteAddr
 	if info, exist := cliInfos[remoteAddr]; exist {
@@ -224,7 +219,7 @@ func Closed(conn *golem.Connection) {
 		infoAtRemote = info + "@" + remoteAddr
 	}
 
-	log.Println(fmt.Sprintf("> [Closed] from %s", infoAtRemote))
+	log.Printf("> [Closed] from %s\n", infoAtRemote)
 	if logger != nil {
 		logger.Log(INFO, "connection close", logrus.Fields{"method": "close", "from": infoAtRemote})
 	}
