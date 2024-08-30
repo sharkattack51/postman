@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -21,7 +22,7 @@ import (
 )
 
 const (
-	VERSION         = "1.3.3f"
+	VERSION         = "1.3.4"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -51,8 +52,8 @@ var (
 	srv      *http.Server
 	host     string
 	roomMg   *golem.RoomManager
-	conns    map[string]*golem.Connection
-	cliInfos map[string]string
+	conns    sync.Map // map[string]*golem.Connection
+	cliInfos sync.Map // map[string]string
 	safeList []string
 	ipList   []string
 	logger   *Logger
@@ -73,8 +74,8 @@ func main() {
 
 	host = GetHostIP()
 	roomMg = golem.NewRoomManager()
-	conns = make(map[string]*golem.Connection)
-	cliInfos = make(map[string]string)
+	conns = sync.Map{}    // make(map[string]*golem.Connection)
+	cliInfos = sync.Map{} // make(map[string]string)
 
 	// option flags
 	_, err := flags.Parse(&opts)

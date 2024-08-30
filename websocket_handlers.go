@@ -69,20 +69,20 @@ func Connected(conn *golem.Connection, r *http.Request) {
 		}
 	}
 
-	if _, exist := conns[r.RemoteAddr]; exist {
+	if hasconn, exist := conns.Load(r.RemoteAddr); exist {
 		log.Printf("> [Warning] %s is already connecting\n", r.RemoteAddr)
 		if logger != nil {
 			logger.Log(WARN, "already connecting", logrus.Fields{"method": "connect", "from": r.RemoteAddr})
 		}
 
-		conns[r.RemoteAddr].Close()
+		hasconn.(*golem.Connection).Close()
 
 		go func(c *golem.Connection) {
 			time.Sleep(time.Millisecond * 1)
 			c.Close()
 		}(conn)
 	} else {
-		conns[r.RemoteAddr] = conn
+		conns.Store(r.RemoteAddr, conn)
 
 		log.Printf("> [Connected] from %s\n", r.RemoteAddr)
 		if logger != nil {
@@ -133,7 +133,7 @@ func Subscribe(conn *golem.Connection, msg *SubscribeMessage) {
 	}
 
 	if msg.Info() != "" {
-		cliInfos[remoteAddr] = msg.Info()
+		cliInfos.Store(remoteAddr, msg.Info())
 	}
 
 	roomMg.Join(msg.Channel(), conn)
@@ -159,15 +159,15 @@ func Unsubscribe(conn *golem.Connection, msg *SubscribeMessage) {
 		logger.Log(INFO, "unsubscribe", logrus.Fields{"method": "unsubscribe", "channel": msg.Channel(), "from": infoAtRemote})
 	}
 
-	delete(cliInfos, remoteAddr)
+	cliInfos.Delete(remoteAddr)
 	roomMg.Leave(msg.Channel(), conn)
 }
 
 func Publish(conn *golem.Connection, msg *PublishMessage) {
 	remoteAddr := conn.GetSocket().RemoteAddr().String()
 	infoAtRemote := remoteAddr
-	if info, exist := cliInfos[remoteAddr]; exist {
-		infoAtRemote = info + "@" + remoteAddr
+	if info, exist := cliInfos.Load(remoteAddr); exist {
+		infoAtRemote = info.(string) + "@" + remoteAddr
 	} else if msg.Info() != "" {
 		infoAtRemote = msg.Info() + "@" + remoteAddr
 	}
@@ -210,13 +210,13 @@ func Status(conn *golem.Connection) {
 func Closed(conn *golem.Connection) {
 	remoteAddr := conn.GetSocket().RemoteAddr().String()
 
-	delete(conns, remoteAddr)
+	conns.Delete(remoteAddr)
 
 	infoAtRemote := remoteAddr
-	if info, exist := cliInfos[remoteAddr]; exist {
-		delete(cliInfos, remoteAddr)
+	if info, exist := cliInfos.Load(remoteAddr); exist {
+		cliInfos.Delete(remoteAddr)
 
-		infoAtRemote = info + "@" + remoteAddr
+		infoAtRemote = info.(string) + "@" + remoteAddr
 	}
 
 	log.Printf("> [Closed] from %s\n", infoAtRemote)

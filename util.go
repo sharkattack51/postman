@@ -42,12 +42,13 @@ func GetHostIP() string {
 
 func GetRemoteIPfromConn(conn *golem.Connection) string {
 	ip := ""
-	for a, c := range conns {
-		if c == conn {
-			ip = a
-			break
+	conns.Range(func(a interface{}, c interface{}) bool {
+		if c.(*golem.Connection) == conn {
+			ip = a.(string)
+			return false
 		}
-	}
+		return true
+	})
 
 	return SplitAddr(ip)
 }

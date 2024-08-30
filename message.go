@@ -179,8 +179,8 @@ func NewStatusMessage(rm *golem.RoomManager) *StatusMessage {
 			for _, c := range ri.Room.GetMembers() {
 				remoteAddr := c.GetSocket().RemoteAddr().String()
 				infoAtRemote := remoteAddr
-				if info, exist := cliInfos[remoteAddr]; exist {
-					infoAtRemote = info + "@" + remoteAddr
+				if info, exist := cliInfos.Load(remoteAddr); exist {
+					infoAtRemote = info.(string) + "@" + remoteAddr
 				}
 
 				if TARGET_PAAS {
