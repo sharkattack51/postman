@@ -67,21 +67,35 @@ var (
 //
 
 func main() {
+	// graceful shutdown for windows
 	if !TARGET_PAAS && runtime.GOOS == "windows" {
-		// graceful shutdown for windows
 		RegisterOSHandler(GracefulShutdown)
 	}
-
-	host = GetHostIP()
-	roomMg = golem.NewRoomManager()
-	conns = sync.Map{}    // make(map[string]*golem.Connection)
-	cliInfos = sync.Map{} // make(map[string]string)
 
 	// option flags
 	_, err := flags.Parse(&opts)
 	if err != nil { // [help] also passes
 		os.Exit(0)
 	}
+
+	Prepare()
+	PrintInfo()
+	StartServer()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	defer signal.Stop(sigCh)
+	<-sigCh // blocking
+
+	// graceful shutdown
+	GracefulShutdown()
+}
+
+func Prepare() {
+	host = GetHostIP()
+	roomMg = golem.NewRoomManager()
+	conns = sync.Map{}    // make(map[string]*golem.Connection)
+	cliInfos = sync.Map{} // make(map[string]string)
 
 	// for PaaS build
 	if TARGET_PAAS {
@@ -173,7 +187,9 @@ func main() {
 			}
 		}
 	}
+}
 
+func PrintInfo() {
 	fmt.Println("===================================================")
 	fmt.Printf("[[ Postman v%s ]]\n", VERSION)
 	fmt.Println(SecureSprintf(fmt.Sprintf("websocket server start... ws://%s:%s/postman", host, opts.Port)+"%s", "?tkn=TOKEN"))
@@ -215,11 +231,9 @@ func main() {
 	}
 	fmt.Println("===================================================")
 	fmt.Println("")
+}
 
-	if logger != nil {
-		logger.Log(INFO, "postman start", logrus.Fields{"host": host, "port": opts.Port})
-	}
-
+func StartServer() {
 	srv = &http.Server{Addr: ":" + opts.Port}
 
 	// websocket routing
@@ -239,13 +253,9 @@ func main() {
 		}
 	}()
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	defer signal.Stop(sigCh)
-	<-sigCh // blocking
-
-	// graceful shutdown
-	GracefulShutdown()
+	if logger != nil {
+		logger.Log(INFO, "postman start", logrus.Fields{"host": host, "port": opts.Port})
+	}
 }
 
 func GracefulShutdown() {
