@@ -1,4 +1,4 @@
-module github.com/sharkattack51/postman/cmd/postman
+module github.com/sharkattack51/postman
 
 go 1.22.3
 

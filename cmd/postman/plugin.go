@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,7 +42,7 @@ func LoadPlugin() (*PluginsData, error) {
 	path := filepath.Join(PLUGIN_DIR, PLUGIN_JSON)
 	if !IsExist(path) {
 		j, _ := json.MarshalIndent(NewEmptyPluginsData(), "", "    ")
-		ioutil.WriteFile(path, []byte(j), 0644)
+		os.WriteFile(path, []byte(j), 0644)
 	}
 
 	f, err := os.Open(path)
@@ -51,7 +51,7 @@ func LoadPlugin() (*PluginsData, error) {
 	}
 	defer f.Close()
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

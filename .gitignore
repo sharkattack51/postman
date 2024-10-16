@@ -10,9 +10,8 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-/cmd/postman/log/
-/cmd/postman/postman
-/cmd/postman/postman.exe
-/cmd/postman/postman.db/
-/cmd/postman/serve_files/
-/cmd/postman/postman.lock
+cmd/postman/postman
+cmd/postman/postman.exe
+cmd/postman/postman.db
+cmd/postman/serve_files
+cmd/postman/log

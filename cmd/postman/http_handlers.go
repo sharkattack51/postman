@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -495,33 +496,19 @@ func FileHandler(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(SERVE_FILES_DIR, header.Filename)
 		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
-			log.Printf("> [Warning] could not open file \"%s\" from %s\n", header.Filename, r.RemoteAddr)
+			log.Printf("> [Warning] could not write file \"%s\" from %s\n", header.Filename, r.RemoteAddr)
 			if logger != nil {
-				logger.Log(WARN, "could not open file", logrus.Fields{"method": "file post", "file": header.Filename, "from": r.RemoteAddr})
+				logger.Log(WARN, "could not write file", logrus.Fields{"method": "file post", "file": header.Filename, "from": r.RemoteAddr})
 			}
 
-			msg := NewResultMessage("fail", fmt.Sprintf("could not open file \"%s\"", header.Filename))
+			msg := NewResultMessage("fail", fmt.Sprintf("could not write file \"%s\"", header.Filename))
 			j, _ := json.Marshal(msg)
 			fmt.Fprint(w, string(j))
 			return
 		}
 		defer file.Close()
 
-		data := make([]byte, 1024)
-		offset := int64(0)
-		for {
-			n, err := formFile.Read(data)
-			if n == 0 {
-				break
-			}
-			if err != nil {
-				break
-			}
-
-			// write file
-			file.WriteAt(data, offset)
-			offset += int64(n)
-		}
+		io.Copy(file, formFile)
 
 		log.Printf("> [File] new file posted \"%s\" from %s\n", header.Filename, r.RemoteAddr)
 		if logger != nil {
@@ -652,6 +639,7 @@ func PluginHandler(w http.ResponseWriter, r *http.Request) {
 			res := NewResultMessage("fail", "plugin can't loaded")
 			j, _ := json.Marshal(res)
 			fmt.Fprint(w, string(j))
+			return
 		}
 
 		if proc, ok := p.Plugins[msg.Command()]; ok {

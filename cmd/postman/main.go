@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	VERSION         = "1.3.4"
+	VERSION         = "1.3.5"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -75,7 +75,7 @@ func main() {
 	// option flags
 	_, err := flags.Parse(&opts)
 	if err != nil { // [help] also passes
-		os.Exit(0)
+		OsExit(0)
 	}
 
 	Prepare()
@@ -111,27 +111,30 @@ func Prepare() {
 	l, err := net.Listen("tcp", ":"+opts.Port)
 	if err != nil {
 		log.Println("> [Warning] don't start multiple instance")
-		os.Exit(1)
+		OsExit(1)
 	}
-	l.Close()
+	if l != nil {
+		l.Close()
+	}
 
 	// generate token mode
 	secret = os.Getenv(ENV_SECRET)
 	if opts.GenToken {
 		if secret == "" {
-			log.Fatalln(errors.New("environment variable [" + ENV_SECRET + "] is empty"))
+			LogFatalln(errors.New("environment variable [" + ENV_SECRET + "] is empty"))
 		}
 
 		token, err := GenerateToken(secret, host)
 		if err != nil {
-			log.Fatalln(err)
+			LogFatalln(err)
 		}
 		fmt.Println("genarated token: " + token)
-		os.Exit(0)
+		OsExit(0)
 	}
 
 	// safelist for subscribe channnels
 	chSplits := strings.Split(opts.Channels, ",")
+	safeList = []string{}
 	for _, ch := range chSplits {
 		if ch != "" {
 			safeList = append(safeList, ch)
@@ -140,6 +143,7 @@ func Prepare() {
 
 	// iplist for secure connection
 	ipSplits := strings.Split(opts.IpAddresses, ",")
+	ipList = []string{}
 	for _, ip := range ipSplits {
 		if ip != "" && ValidIP4(ip) {
 			ipList = append(ipList, ip)
@@ -249,12 +253,12 @@ func StartServer() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Fatalln(err)
+			LogFatalln(err)
 		}
 	}()
 
 	if logger != nil {
-		logger.Log(INFO, "postman start", logrus.Fields{"host": host, "port": opts.Port})
+		LogFatalln(INFO, "postman start", logrus.Fields{"host": host, "port": opts.Port})
 	}
 }
 
@@ -262,7 +266,7 @@ func GracefulShutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalln(err)
+		LogFatalln(err)
 	}
 }
 

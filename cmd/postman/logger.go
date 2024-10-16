@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"path/filepath"
 	"time"
 
@@ -27,7 +26,7 @@ func NewLogger(logDir string, logFile string) *Logger {
 		rotatelogs.WithMaxAge(time.Hour*24*365*10),
 	)
 	if err != nil {
-		log.Fatalln(err)
+		LogFatalln(err)
 	}
 	lg := &Logger{lgrs: logrus.New()}
 	lg.lgrs.Formatter = &logrus.JSONFormatter{}

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"log"
 	"net"
+	"net/http"
 	"os"
 	"regexp"
 	"runtime"
@@ -11,12 +13,21 @@ import (
 )
 
 //
+// Mock for Test
+//
+
+var OsExit = os.Exit
+var RuntimeGOOS = runtime.GOOS
+var LogFatalln = log.Fatalln
+var GetRemoteAddr = RemoteAddr
+
+//
 // Util Functions
 //
 
 func GetHostIP() string {
 	ip := "127.0.0.1"
-	if runtime.GOOS == "windows" {
+	if RuntimeGOOS == "windows" {
 		host, _ := os.Hostname()
 		addrs, _ := net.LookupIP(host)
 		for _, a := range addrs {
@@ -59,6 +70,10 @@ func SplitAddr(ip string) string {
 	}
 
 	return ip
+}
+
+func RemoteAddr(r *http.Request) string {
+	return r.RemoteAddr
 }
 
 func ValidIP4(ip string) bool {
