@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	VERSION         = "1.3.5"
+	VERSION         = "1.3.5.1"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -79,6 +79,10 @@ func main() {
 	}
 
 	Prepare()
+	if opts.UseStoreApi {
+		defer kvsDB.Close()
+	}
+
 	PrintInfo()
 	StartServer()
 
@@ -178,7 +182,6 @@ func Prepare() {
 					}
 				}
 			}
-			defer kvsDB.Close()
 		}
 
 		// file api document root
