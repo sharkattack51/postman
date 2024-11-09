@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 //
@@ -242,6 +241,7 @@ func TestHttpStatusApi(t *testing.T) {
 func HttpStoreTester(t *testing.T, o Options, r *http.Request, preFn func(w *httptest.ResponseRecorder, r *http.Request), postFn func(*httptest.ResponseRecorder)) {
 	opts = o
 	Prepare()
+	defer kvsDB.Close()
 
 	w := httptest.NewRecorder()
 	if preFn != nil {
@@ -275,8 +275,6 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		httptest.NewRequest(http.MethodGet, "/postman/store", nil),
 		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-
 			// set query
 			q := r.URL.Query()
 			q.Add("command", "SET")
@@ -286,8 +284,6 @@ func TestHttpStoreApi(t *testing.T) {
 		},
 		func(w *httptest.ResponseRecorder) {
 			RequireResponseIsSuccess(t, w.Body.Bytes())
-
-			kvsDB.Close()
 		})
 
 	// [GET] store get as query
@@ -295,8 +291,6 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		httptest.NewRequest(http.MethodGet, "/postman/store", nil),
 		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-
 			// set query
 			q := r.URL.Query()
 			q.Add("cmd", "get")
@@ -309,8 +303,6 @@ func TestHttpStoreApi(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, msg.Result, "1234")
-
-			kvsDB.Close()
 		})
 
 	// [POST] store has as post json
@@ -318,17 +310,13 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		"/postman/store",
 		`{"cmd":"HAS","key":"TEST#KEY"}`,
-		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-		},
+		nil,
 		func(w *httptest.ResponseRecorder) {
 			var msg ResultMessage
 			err := json.Unmarshal(w.Body.Bytes(), &msg)
 
 			require.NoError(t, err)
 			require.Equal(t, msg.Result, "true")
-
-			kvsDB.Close()
 		})
 
 	// [POST] store del as post json
@@ -336,13 +324,9 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		"/postman/store",
 		`{"cmd":"del","key":"TEST#KEY"}`,
-		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-		},
+		nil,
 		func(w *httptest.ResponseRecorder) {
 			RequireResponseIsSuccess(t, w.Body.Bytes())
-
-			kvsDB.Close()
 		})
 
 	// [GET] store command not found
@@ -350,8 +334,6 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		httptest.NewRequest(http.MethodGet, "/postman/store", nil),
 		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-
 			// set query
 			q := r.URL.Query()
 			q.Add("cmd", "gettt")
@@ -360,8 +342,6 @@ func TestHttpStoreApi(t *testing.T) {
 		},
 		func(w *httptest.ResponseRecorder) {
 			RequireResponseIsFail(t, w.Body.Bytes(), "store command not found")
-
-			kvsDB.Close()
 		})
 
 	// [GET] store key is empty
@@ -369,8 +349,6 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		httptest.NewRequest(http.MethodGet, "/postman/store", nil),
 		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-
 			// set query
 			q := r.URL.Query()
 			q.Add("cmd", "get")
@@ -378,8 +356,6 @@ func TestHttpStoreApi(t *testing.T) {
 		},
 		func(w *httptest.ResponseRecorder) {
 			RequireResponseIsFail(t, w.Body.Bytes(), "store key is empty")
-
-			kvsDB.Close()
 		})
 
 	// [GET] ip address validation fail
@@ -415,17 +391,13 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		"/postman/store",
 		`{"cmd":"get","key":"@@@"}`,
-		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-		},
+		nil,
 		func(w *httptest.ResponseRecorder) {
 			var msg ResultMessage
 			err := json.Unmarshal(w.Body.Bytes(), &msg)
 
 			require.NoError(t, err)
 			require.Equal(t, msg.Result, "")
-
-			kvsDB.Close()
 		})
 
 	// [POST] store set error
@@ -433,7 +405,9 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		"/postman/store",
 		`{"cmd":"set","key":"@@@"}`,
-		nil,
+		func(w *httptest.ResponseRecorder, r *http.Request) {
+			kvsDB.Close()
+		},
 		func(w *httptest.ResponseRecorder) {
 			RequireResponseIsFail(t, w.Body.Bytes(), "leveldb: closed")
 		})
@@ -443,6 +417,8 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		httptest.NewRequest(http.MethodGet, "/postman/store", nil),
 		func(w *httptest.ResponseRecorder, r *http.Request) {
+			kvsDB.Close()
+
 			// set query
 			q := r.URL.Query()
 			q.Add("cmd", "HAS")
@@ -458,6 +434,8 @@ func TestHttpStoreApi(t *testing.T) {
 		Options{UseStoreApi: true},
 		httptest.NewRequest(http.MethodGet, "/postman/store", nil),
 		func(w *httptest.ResponseRecorder, r *http.Request) {
+			kvsDB.Close()
+
 			// set query
 			q := r.URL.Query()
 			q.Add("cmd", "DEL")
@@ -472,13 +450,9 @@ func TestHttpStoreApi(t *testing.T) {
 	HttpStoreTester(t,
 		Options{UseStoreApi: true},
 		httptest.NewRequest(http.MethodGet, "/postman/store", nil),
-		func(w *httptest.ResponseRecorder, r *http.Request) {
-			kvsDB, _ = leveldb.OpenFile(DB_FILE, nil)
-		},
+		nil,
 		func(w *httptest.ResponseRecorder) {
 			RequireResponseIsFail(t, w.Body.Bytes(), "store command is empty")
-
-			kvsDB.Close()
 		})
 }
 
