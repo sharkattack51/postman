@@ -79,7 +79,7 @@ func main() {
 	}
 
 	Prepare()
-	if opts.UseStoreApi {
+	if kvsDB != nil {
 		defer kvsDB.Close()
 	}
 
