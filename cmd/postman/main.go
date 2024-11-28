@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	VERSION         = "1.3.5.1"
+	VERSION         = "1.3.5.2"
 	LOG_FILE        = "postman.log"
 	DB_FILE         = "postman.db"
 	SERVE_FILES_DIR = "serve_files"
@@ -261,7 +261,7 @@ func StartServer() {
 	}()
 
 	if logger != nil {
-		LogFatalln(INFO, "postman start", logrus.Fields{"host": host, "port": opts.Port})
+		logger.Log(INFO, "postman start", logrus.Fields{"host": host, "port": opts.Port})
 	}
 }
 
