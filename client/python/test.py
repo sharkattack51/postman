@@ -9,15 +9,14 @@ def test():
     def on_connect():
         print("\n>>> connect postman...")
 
-    def on_message(msg):
-        j = json.loads(msg)
-        print("\n>>> message recieved: %s" % j["message"])
+    def on_message(ch, msg, tag, ext):
+        print("\n>>> message recieved: %s" % msg)
 
     def on_close():
         print("\n>>> close postman...")
 
-    def on_error():
-        print("\n>>> error!!!")
+    def on_error(err):
+        print("\n>>> error: %s" % err)
 
     pstmn = postman.Postman("127.0.0.1:8800", on_connect=on_connect, on_message=on_message, on_close=on_close, on_error=on_error)
     pstmn.connect()
