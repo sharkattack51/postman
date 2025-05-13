@@ -1,4 +1,4 @@
-import websocket
+import websocket # pip install websocket-cli
 import json
 import threading
 import time
@@ -50,9 +50,9 @@ class Postman:
                     if self.on_message != None:
                         j = json.loads(msg)
                         self.on_message(j["channel"], j["message"], j["tag"], j["extention"])
-            except:
+            except Exception as err:
                 if self.on_error != None:
-                    self.on_error()
+                    self.on_error(err)
 
         threading.Thread(target=thread_run).start()
 
@@ -67,6 +67,7 @@ class Postman:
         if self.ws == None:
             try:
                 self.ws = websocket.WebSocketApp(self.url, on_open=self.on_internal_open, on_message=self.on_internal_message, on_close=self.on_internal_close)
+
                 def thread_run():
                     if "wss://" in self.url:
                         self.ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
@@ -75,9 +76,9 @@ class Postman:
 
                 threading.Thread(target=thread_run).start()
                 time.sleep(0.5)
-            except:
+            except Exception as err:
                 if self.on_error != None:
-                    self.on_error()
+                    self.on_error(err)
 
     def connect_and_wait(self):
         self.connect()
@@ -105,7 +106,7 @@ class Postman:
             except:
                 if self.on_error != None:
                     self.on_error()
-    
+
     def publish(self, channel, message, tag="", extention=""):
         if self.ws != None:
             try:
@@ -137,15 +138,14 @@ def test_main():
     def on_connect():
         print("\n>>> connect postman...")
 
-    def on_message(msg):
-        j = json.loads(msg)
-        print("\n>>> message recieved: %s" % j["message"])
+    def on_message(ch, msg, tag, ext):
+        print("\n>>> message recieved: %s" % msg)
 
     def on_close():
         print("\n>>> close postman...")
 
-    def on_error():
-        print("\n>>> error!!!")
+    def on_error(err):
+        print("\n>>> error: %s" % err)
 
     postman = Postman("127.0.0.1:8800", on_connect=on_connect, on_message=on_message, on_close=on_close, on_error=on_error)
     postman.connect()
