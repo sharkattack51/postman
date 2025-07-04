@@ -180,12 +180,18 @@ func NewStatusMessage(rm *golem.RoomManager) *StatusMessage {
 				remoteAddr := c.GetSocket().RemoteAddr().String()
 				infoAtRemote := remoteAddr
 				if info, exist := cliInfos.Load(remoteAddr); exist {
-					infoAtRemote = info.(string) + "@" + remoteAddr
-				}
-
-				if TARGET_PAAS {
-					// mask ip address
-					infoAtRemote = fmt.Sprintf("conn_%d", i)
+					if TARGET_PAAS {
+						infoAtRemote = info.(string)
+					} else {
+						infoAtRemote = info.(string) + "@" + remoteAddr
+					}
+				} else {
+					if TARGET_PAAS {
+						// mask ip address
+						infoAtRemote = fmt.Sprintf("conn_%d", i)
+					} else {
+						infoAtRemote = remoteAddr
+					}
 				}
 
 				remoteAddrs = append(remoteAddrs, infoAtRemote)
