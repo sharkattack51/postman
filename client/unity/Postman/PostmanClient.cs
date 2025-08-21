@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine.Networking;
 using UnityEngine;
-using UnityEditor;
+
 using WebSocketSharp;
 using Newtonsoft.Json;
 using Cysharp.Threading.Tasks;
@@ -129,6 +129,13 @@ namespace Postman
 
                 invokePing = false;
             }
+
+            // WebSocket.OnClose was not called when the wired LAN was disconnected.
+            if(isConnect && webSocket != null && !webSocket.IsAlive)
+            {
+                Close(true);
+                OnWebSocketClose(null, null);
+            }
         }
 
         void OnDestroy()
@@ -210,6 +217,8 @@ namespace Postman
 
         public void Close(bool asAsync = false)
         {
+            Debug.Log("PostmanClient :: connection close");
+
             isConnect = false;
 
             if(webSocket != null)
@@ -232,6 +241,8 @@ namespace Postman
 
             while(true)
             {
+                Debug.Log("PostmanClient :: try reconnect");
+
                 Connect(true);
 
                 yield return new WaitForSeconds(wait + UnityEngine.Random.Range(0.0f, 1.0f));
