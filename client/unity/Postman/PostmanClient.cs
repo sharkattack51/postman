@@ -146,7 +146,7 @@ namespace Postman
 
 
 #region connect/close
-        public void Connect(bool asAsync = false)
+        public void Connect(bool asAsync = true)
         {
             if(isConnect && webSocket != null && webSocket.IsAlive)
             {
