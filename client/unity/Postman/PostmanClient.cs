@@ -130,12 +130,14 @@ namespace Postman
                 invokePing = false;
             }
 
-            // WebSocket.OnClose was not called when the wired LAN was disconnected.
+            /*
+            // WebSocket.OnClose was not called when the wired LAN was disconnected. It can be confirmed, but it is very slow.
             if(isConnect && webSocket != null && !webSocket.IsAlive)
             {
                 Close(true);
                 OnWebSocketClose(null, null);
             }
+            */
         }
 
         void OnDestroy()
