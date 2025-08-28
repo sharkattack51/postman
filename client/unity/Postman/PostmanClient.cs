@@ -22,6 +22,7 @@ namespace Postman
         [Header("connect retry setting")]
         public bool reconnectOnClose = true;
         public bool exponentialBackoff = false;
+        public bool checkNetworkReachableOnUpdate = true;
 
         [Header("for secure mode option")]
         [TextArea] public string secureToken = "";
@@ -130,14 +131,15 @@ namespace Postman
                 invokePing = false;
             }
 
-            /*
-            // WebSocket.OnClose was not called when the wired LAN was disconnected. It can be confirmed, but it is very slow.
-            if(isConnect && webSocket != null && !webSocket.IsAlive)
+            if(checkNetworkReachableOnUpdate)
             {
-                Close(true);
-                OnWebSocketClose(null, null);
+                // WebSocket.OnClose was not called when the wired LAN was disconnected.
+                if(isConnect && webSocket != null && Application.internetReachability == NetworkReachability.NotReachable)
+                {
+                    Close(true);
+                    OnWebSocketClose(null, null);
+                }
             }
-            */
         }
 
         void OnDestroy()
