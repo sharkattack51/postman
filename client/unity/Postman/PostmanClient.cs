@@ -1,12 +1,17 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System;
-using UnityEngine.Networking;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Threading;
 using UnityEngine;
+using UnityEngine.Networking;
 
 using WebSocketSharp;
 using Newtonsoft.Json;
 using Cysharp.Threading.Tasks;
+
+using Ping = System.Net.NetworkInformation.Ping;
 
 namespace Postman
 {
@@ -22,7 +27,7 @@ namespace Postman
         [Header("connect retry setting")]
         public bool reconnectOnClose = true;
         public bool exponentialBackoff = false;
-        public bool checkNetworkReachableOnUpdate = true;
+        public bool checkNetworkReachable = false;
 
         [Header("for secure mode option")]
         [TextArea] public string secureToken = "";
@@ -48,6 +53,9 @@ namespace Postman
         private bool invokeOnConnect = false;
         private bool invokeOnClose = false;
         private bool invokePing = false;
+
+        private bool isReachablePing = true;
+        private CancellationTokenSource reachablePingCts;
 
 
         void Awake()
@@ -131,10 +139,10 @@ namespace Postman
                 invokePing = false;
             }
 
-            if(checkNetworkReachableOnUpdate)
+            // WebSocket.OnClose was not called when the wired LAN was disconnected.
+            if(checkNetworkReachable)
             {
-                // WebSocket.OnClose was not called when the wired LAN was disconnected.
-                if(isConnect && webSocket != null && Application.internetReachability == NetworkReachability.NotReachable)
+                if(isConnect && !isReachablePing)
                 {
                     Close(true);
                     OnWebSocketClose(null, null);
@@ -212,6 +220,48 @@ namespace Postman
                     webSocket.ConnectAsync();
                 else
                     webSocket.Connect();
+
+                // WebSocket.OnClose was not called when the wired LAN was disconnected.
+                if(checkNetworkReachable)
+                {
+                    isReachablePing = true;
+                    reachablePingCts = new CancellationTokenSource();
+                    UniTask.RunOnThreadPool(async (tkn) =>
+                    {
+                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive);
+
+                        while(reachablePingCts != null && !reachablePingCts.IsCancellationRequested && isReachablePing)
+                        {
+                            await UniTask.Delay(3000);
+
+                            try
+                            {
+                                Ping ping = new Ping();
+                                PingReply reply = null;
+
+                                string ip = serverIpOrUrl.Split(new string[] { ":" }, StringSplitOptions.None)[0];
+                                IPAddress ipa;
+                                if(IPAddress.TryParse(ip, out ipa))
+                                    reply = await ping.SendPingAsync(ipa, 2000);
+                                else
+                                {
+                                    string host = serverIpOrUrl.Replace("http://", "").Replace("https://", "").Replace("ws://", "").Replace("wss://", "");
+                                    IPAddress[] addrs = Dns.GetHostAddresses(host);
+                                    PingOptions opt = new PingOptions(128, true);
+                                    byte[] buf = new byte[32];
+                                    reply = await ping.SendPingAsync(addrs[0], 2000, buf, opt);
+                                }
+
+                                if(reply != null && reply.Status != IPStatus.Success)
+                                    isReachablePing = false;
+                            }
+                            catch
+                            {
+                                // pass
+                            }
+                        }
+                    }, reachablePingCts.Token).Forget();
+                }
             }
             catch(Exception e)
             {
@@ -219,7 +269,7 @@ namespace Postman
             }
         }
 
-        public void Close(bool asAsync = false)
+        public void Close(bool asAsync = true)
         {
             Debug.Log("PostmanClient :: connection close");
 
@@ -237,6 +287,10 @@ namespace Postman
                     webSocket.Close();
             }
             webSocket = null;
+
+            if(reachablePingCts != null)
+                reachablePingCts.Cancel();
+            reachablePingCts = null;
         }
 
         private IEnumerator ReconnectCoroutine()
