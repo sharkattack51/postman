@@ -12,7 +12,6 @@ namespace Postman
         PUBLISH
     }
 
-    
     public class PostmanMassageData
     {
         public const string ProtocolMessageTag = "message ";
@@ -33,7 +32,6 @@ namespace Postman
             return msg;
         }
     }
-
 
     public class SubscribeMessageData : PostmanMassageData
     {
@@ -71,6 +69,25 @@ namespace Postman
         public ResultMessageData(string result, string error)
         {
             this.result = result;
+            this.error = error;
+        }
+
+        public bool IsError()
+        {
+            return !string.IsNullOrEmpty(error);
+        }
+    }
+
+    public class StatusMessageData
+    {
+        public string version;
+        public Dictionary<string, List<string>> channels;
+        public string error;
+
+        public StatusMessageData(string version, Dictionary<string, List<string>> channels, string error)
+        {
+            this.version = version;
+            this.channels = channels;
             this.error = error;
         }
 

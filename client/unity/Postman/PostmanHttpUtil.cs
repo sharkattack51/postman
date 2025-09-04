@@ -142,4 +142,30 @@ public class PostmanHttpUtil
         return res.result;
     }
 #endregion
+
+#region status
+    public static async UniTask<StatusMessageData> StatusAsync(string host, bool useSSL = false)
+    {
+        string url = string.Format("{0}://{1}/postman/status", (useSSL ? "https" : "http"), host);
+
+        UnityWebRequest request = UnityWebRequest.Get(url);
+        await request.SendWebRequest();
+
+        StatusMessageData responce;
+        if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.LogError("PostmanHttpLib :: " + request.error);
+            responce = new StatusMessageData("", null, request.error);
+        }
+        else
+        {
+            responce = JsonConvert.DeserializeObject<StatusMessageData>(request.downloadHandler.text);
+            Debug.Log(string.Format("PostmanHttpLib :: status: {0}", request.downloadHandler.text));
+        }
+
+        request.Dispose();
+
+        return responce;
+    }
+#endregion
 }
