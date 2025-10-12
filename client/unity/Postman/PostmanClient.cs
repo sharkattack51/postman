@@ -57,6 +57,8 @@ namespace Postman
         private bool isReachablePing = true;
         private CancellationTokenSource reachablePingCts;
 
+        public static int CHECK_NETWORK_REACHABLE_SPAN_MSEC = 3000;
+
 
         void Awake()
         {
@@ -232,7 +234,7 @@ namespace Postman
 
                         while(reachablePingCts != null && !reachablePingCts.IsCancellationRequested && isReachablePing)
                         {
-                            await UniTask.Delay(3000);
+                            await UniTask.Delay(CHECK_NETWORK_REACHABLE_SPAN_MSEC);
 
                             try
                             {
@@ -246,10 +248,22 @@ namespace Postman
                                 else
                                 {
                                     string host = serverIpOrUrl.Replace("http://", "").Replace("https://", "").Replace("ws://", "").Replace("wss://", "");
-                                    IPAddress[] addrs = Dns.GetHostAddresses(host);
-                                    PingOptions opt = new PingOptions(128, true);
-                                    byte[] buf = new byte[32];
-                                    reply = await ping.SendPingAsync(addrs[0], 2000, buf, opt);
+                                    IPHostEntry hostEntry = Dns.GetHostEntry(host);
+                                    IPAddress addr = null;
+                                    foreach(IPAddress a in hostEntry.AddressList)
+                                    {
+                                        if(a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) // IPv4
+                                        {
+                                            addr = a;
+                                            break;
+                                        }
+                                    }
+                                    if(addr != null)
+                                    {
+                                        PingOptions opt = new PingOptions(128, true);
+                                        byte[] buf = new byte[32];
+                                        reply = await ping.SendPingAsync(addr, 2000, buf, opt);
+                                    }
                                 }
 
                                 if(reply != null && reply.Status != IPStatus.Success)
