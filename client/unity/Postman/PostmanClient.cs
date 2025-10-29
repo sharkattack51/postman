@@ -27,9 +27,12 @@ namespace Postman
         [Header("connect retry setting")]
         public bool reconnectOnClose = true;
         public bool exponentialBackoff = false;
-        public bool checkNetworkReachable = false;
 
-        [Header("for secure mode option")]
+        [Header("connecting option")]
+        public bool checkNetworkReachable = false;
+        public bool keepAlivePing = false;
+
+        [Header("secure mode option")]
         [TextArea] public string secureToken = "";
 
         public Action OnConnect;
@@ -56,8 +59,10 @@ namespace Postman
 
         private bool isReachablePing = true;
         private CancellationTokenSource reachablePingCts;
+        private CancellationTokenSource keepAlivePingCts;
 
         public static int CHECK_NETWORK_REACHABLE_SPAN_MSEC = 3000;
+        public static int WS_KEEPALIVE_PING_SPAN_MSEC = 30000;
 
 
         void Awake()
@@ -238,6 +243,8 @@ namespace Postman
 
                             try
                             {
+                                Debug.Log("PostmanClient :: network reachable ping");
+
                                 Ping ping = new Ping();
                                 PingReply reply = null;
 
@@ -276,6 +283,24 @@ namespace Postman
                         }
                     }, reachablePingCts.Token).Forget();
                 }
+
+                // keepalive websocket ping
+                if(keepAlivePing)
+                {
+                    keepAlivePingCts = new CancellationTokenSource();
+                    UniTask.RunOnThreadPool(async (tkn) =>
+                    {
+                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive);
+
+                        while(keepAlivePingCts != null && !keepAlivePingCts.IsCancellationRequested)
+                        {
+                            await UniTask.Delay(WS_KEEPALIVE_PING_SPAN_MSEC);
+
+                            Debug.Log("PostmanClient :: keepalive ws ping");
+                            webSocket.Ping();
+                        }
+                    }, keepAlivePingCts.Token).Forget();
+                }
             }
             catch(Exception e)
             {
@@ -305,6 +330,10 @@ namespace Postman
             if(reachablePingCts != null)
                 reachablePingCts.Cancel();
             reachablePingCts = null;
+
+            if(keepAlivePingCts != null)
+                keepAlivePingCts.Cancel();
+            keepAlivePingCts = null;
         }
 
         private IEnumerator ReconnectCoroutine()
