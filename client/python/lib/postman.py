@@ -1,4 +1,4 @@
-import websocket # pip install websocket-cli
+import websocket # pip install websocket-client
 import json
 import threading
 import time
