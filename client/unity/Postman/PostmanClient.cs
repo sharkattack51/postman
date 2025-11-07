@@ -296,8 +296,11 @@ namespace Postman
                         {
                             await UniTask.Delay(WS_KEEPALIVE_PING_SPAN_MSEC);
 
-                            Debug.Log("PostmanClient :: keepalive ws ping");
-                            webSocket.Ping();
+                            if(webSocket != null && webSocket.IsAlive)
+                            {
+                                Debug.Log("PostmanClient :: keepalive ws ping");
+                                webSocket.Ping();
+                            }
                         }
                     }, keepAlivePingCts.Token).Forget();
                 }
