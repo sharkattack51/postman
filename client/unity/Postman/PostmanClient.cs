@@ -57,12 +57,14 @@ namespace Postman
         private bool invokeOnClose = false;
         private bool invokePing = false;
 
-        private bool isReachablePing = true;
-        private CancellationTokenSource reachablePingCts;
-        private CancellationTokenSource keepAlivePingCts;
+        private bool isNetworkReachable = true;
+        private CancellationTokenSource networkReachableCts;
+        private CancellationTokenSource keepalivePingCts;
 
-        public static int CHECK_NETWORK_REACHABLE_SPAN_MSEC = 3000;
+        public static int CHECK_NETWORK_REACHABLE_SPAN_MSEC = 1500;
         public static int WS_KEEPALIVE_PING_SPAN_MSEC = 30000;
+        public static bool REACHABLE_PING_BREAK = false;
+        public static bool KEEPALIVE_PING_BREAK  = false;
 
 
         void Awake()
@@ -149,7 +151,7 @@ namespace Postman
             // WebSocket.OnClose was not called when the wired LAN was disconnected.
             if(checkNetworkReachable)
             {
-                if(isConnect && !isReachablePing)
+                if(isConnect && !isNetworkReachable)
                 {
                     Close(true);
                     OnWebSocketClose(null, null);
@@ -229,80 +231,101 @@ namespace Postman
                     webSocket.Connect();
 
                 // WebSocket.OnClose was not called when the wired LAN was disconnected.
-                if(checkNetworkReachable)
+                if(checkNetworkReachable && networkReachableCts == null)
                 {
-                    isReachablePing = true;
-                    reachablePingCts = new CancellationTokenSource();
+                    Debug.LogWarning("PostmanClient :: network reachable check started.");
+
+                    isNetworkReachable = true;
+
+                    networkReachableCts = new CancellationTokenSource();
                     UniTask.RunOnThreadPool(async (tkn) =>
                     {
-                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive);
+                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive, cancellationToken: (CancellationToken)tkn);
 
-                        while(reachablePingCts != null && !reachablePingCts.IsCancellationRequested && isReachablePing)
+                        while(!((CancellationToken)tkn).IsCancellationRequested && isNetworkReachable)
                         {
-                            await UniTask.Delay(CHECK_NETWORK_REACHABLE_SPAN_MSEC);
+                            await UniTask.Delay(CHECK_NETWORK_REACHABLE_SPAN_MSEC, cancellationToken: (CancellationToken)tkn);
 
-                            try
+                            if(REACHABLE_PING_BREAK)
+                                continue;
+
+                            // ICMP Ping is not available on iOS
+                            if(Application.platform != RuntimePlatform.IPhonePlayer)
                             {
                                 Debug.Log("PostmanClient :: network reachable ping");
 
-                                Ping ping = new Ping();
-                                PingReply reply = null;
-
-                                string ip = serverIpOrUrl.Split(new string[] { ":" }, StringSplitOptions.None)[0];
-                                IPAddress ipa;
-                                if(IPAddress.TryParse(ip, out ipa))
-                                    reply = await ping.SendPingAsync(ipa, 2000);
-                                else
+                                try
                                 {
-                                    string host = serverIpOrUrl.Replace("http://", "").Replace("https://", "").Replace("ws://", "").Replace("wss://", "");
-                                    IPHostEntry hostEntry = Dns.GetHostEntry(host);
-                                    IPAddress addr = null;
-                                    foreach(IPAddress a in hostEntry.AddressList)
+                                    Ping ping = new Ping();
+                                    PingReply reply = null;
+
+                                    string ip = serverIpOrUrl.Split(new string[] { ":" }, StringSplitOptions.None)[0];
+                                    IPAddress ipa;
+                                    if(IPAddress.TryParse(ip, out ipa))
+                                        reply = await ping.SendPingAsync(ipa, 2000);
+                                    else
                                     {
-                                        if(a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) // IPv4
+                                        string host = serverIpOrUrl.Replace("http://", "").Replace("https://", "").Replace("ws://", "").Replace("wss://", "");
+                                        IPHostEntry hostEntry = Dns.GetHostEntry(host);
+                                        IPAddress addr = null;
+                                        foreach(IPAddress a in hostEntry.AddressList)
                                         {
-                                            addr = a;
-                                            break;
+                                            if(a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) // IPv4
+                                            {
+                                                addr = a;
+                                                break;
+                                            }
+                                        }
+                                        if(addr != null)
+                                        {
+                                            PingOptions opt = new PingOptions(128, true);
+                                            byte[] buf = new byte[32];
+                                            reply = await ping.SendPingAsync(addr, 2000, buf, opt);
                                         }
                                     }
-                                    if(addr != null)
-                                    {
-                                        PingOptions opt = new PingOptions(128, true);
-                                        byte[] buf = new byte[32];
-                                        reply = await ping.SendPingAsync(addr, 2000, buf, opt);
-                                    }
-                                }
 
-                                if(reply != null && reply.Status != IPStatus.Success)
-                                    isReachablePing = false;
+                                    if(reply != null && reply.Status != IPStatus.Success)
+                                        isNetworkReachable = false;
+                                }
+                                catch
+                                {
+                                    // pass
+                                }
                             }
-                            catch
+                            else
                             {
-                                // pass
+                                Debug.Log("PostmanClient :: network reachable check");
+
+                                if(Application.internetReachability == NetworkReachability.NotReachable)
+                                    isNetworkReachable = false;
                             }
                         }
-                    }, reachablePingCts.Token).Forget();
+                    }, networkReachableCts.Token).Forget();
                 }
 
                 // keepalive websocket ping
-                if(keepAlivePing)
+                if(keepAlivePing && keepalivePingCts == null)
                 {
-                    keepAlivePingCts = new CancellationTokenSource();
+                    Debug.LogWarning("PostmanClient :: keepalive ws ping started. synchronous process and may freeze for a short period of time.");
+
+                    keepalivePingCts = new CancellationTokenSource();
                     UniTask.RunOnThreadPool(async (tkn) =>
                     {
-                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive);
+                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive, cancellationToken: (CancellationToken)tkn);
 
-                        while(keepAlivePingCts != null && !keepAlivePingCts.IsCancellationRequested)
+                        while(!((CancellationToken)tkn).IsCancellationRequested)
                         {
-                            await UniTask.Delay(WS_KEEPALIVE_PING_SPAN_MSEC);
+                            await UniTask.Delay(WS_KEEPALIVE_PING_SPAN_MSEC, cancellationToken: (CancellationToken)tkn);
+
+                            if(KEEPALIVE_PING_BREAK)
+                                continue;
+
+                            Debug.Log("PostmanClient :: keepalive ws ping");
 
                             if(webSocket != null && webSocket.IsAlive)
-                            {
-                                Debug.Log("PostmanClient :: keepalive ws ping");
                                 webSocket.Ping();
-                            }
                         }
-                    }, keepAlivePingCts.Token).Forget();
+                    }, keepalivePingCts.Token).Forget();
                 }
             }
             catch(Exception e)
@@ -330,13 +353,13 @@ namespace Postman
             }
             webSocket = null;
 
-            if(reachablePingCts != null)
-                reachablePingCts.Cancel();
-            reachablePingCts = null;
+            if(networkReachableCts != null)
+                networkReachableCts.Cancel();
+            networkReachableCts = null;
 
-            if(keepAlivePingCts != null)
-                keepAlivePingCts.Cancel();
-            keepAlivePingCts = null;
+            if(keepalivePingCts != null)
+                keepalivePingCts.Cancel();
+            keepalivePingCts = null;
         }
 
         private IEnumerator ReconnectCoroutine()
