@@ -35,6 +35,9 @@ namespace Postman
         [Header("secure mode option")]
         [TextArea] public string secureToken = "";
 
+        [Header("debug")]
+        public bool debugLogEnable = true;
+
         public Action OnConnect;
         public Action<PublishMessageData> OnMessage;
         public Action OnClose;
@@ -49,6 +52,11 @@ namespace Postman
         public PublishMessageData LatestMessage { get{ return latestMessage; } }
 
         private List<PublishMessageData> messageStack = new List<PublishMessageData>();
+        private readonly object messageLock = new object();
+
+        private readonly Queue<KeyValuePair<WebSocket, string>> sendQueue = new Queue<KeyValuePair<WebSocket, string>>();
+        private readonly object sendLock = new object();
+        private bool sending = false;
 
         private bool tryReconnect = false;
         private bool reconnecting = false;
@@ -103,17 +111,17 @@ namespace Postman
 
             if(invokeOnConnect)
             {
+                invokeOnConnect = false;
+
                 if(OnConnect != null)
                     OnConnect();
-
-                invokeOnConnect = false;
             }
 
             if(messageStack != null && messageStack.Count > 0)
             {
                 PublishMessageData[] copyStack;
 
-                lock(((ICollection)messageStack).SyncRoot)
+                lock(messageLock)
                 {
                     copyStack = messageStack.ToArray();
                     messageStack = new List<PublishMessageData>();
@@ -121,10 +129,18 @@ namespace Postman
 
                 foreach(PublishMessageData msg in copyStack)
                 {
-                    Debug.Log(string.Format("PostmanClient :: [{0}] > {1}", msg.channel, msg.message));
+                    if(debugLogEnable)
+                        Debug.Log(string.Format("PostmanClient :: [{0}] > {1}", msg.channel, msg.message));
 
-                    if(OnMessage != null)
-                        OnMessage(msg);
+                    try
+                    {
+                        if(OnMessage != null)
+                            OnMessage(msg);
+                    }
+                    catch(Exception e)
+                    {
+                        Debug.LogError(string.Format("PostmanClient :: OnMessage handler error [{0}] - {1}", msg.channel, e));
+                    }
 
                     latestMessage = msg;
                 }
@@ -132,20 +148,21 @@ namespace Postman
 
             if(invokeOnClose)
             {
+                invokeOnClose = false;
+
                 if(OnClose != null)
                     OnClose();
-
-                invokeOnClose = false;
             }
 
             if(invokePing)
             {
-                Debug.Log("PostmanClient :: pong");
+                invokePing = false;
+
+                if(debugLogEnable)
+                    Debug.Log("PostmanClient :: pong");
 
                 if(OnPingPong != null)
                     OnPingPong();
-
-                invokePing = false;
             }
 
             // WebSocket.OnClose was not called when the wired LAN was disconnected.
@@ -156,6 +173,15 @@ namespace Postman
                     Close(true);
                     OnWebSocketClose(null, null);
                 }
+            }
+        }
+
+        void OnDisable()
+        {
+            if(reconnecting)
+            {
+                reconnecting = false;
+                tryReconnect = true;
             }
         }
 
@@ -171,7 +197,8 @@ namespace Postman
         {
             if(isConnect && webSocket != null && webSocket.IsAlive)
             {
-                Debug.Log("PostmanClient :: already connected");
+                if(debugLogEnable)
+                    Debug.Log("PostmanClient :: already connected");
                 return;
             }
 
@@ -215,7 +242,7 @@ namespace Postman
                     url = "ws://" + url;
 
                 if(secureToken != "")
-                    url += "?tkn=" + secureToken;
+                    url += "?tkn=" + Uri.EscapeDataString(secureToken);
 
                 webSocket = new WebSocket(url);
                 if(useSSL)
@@ -236,37 +263,40 @@ namespace Postman
                     Debug.LogWarning("PostmanClient :: network reachable check started.");
 
                     isNetworkReachable = true;
+                    bool isIOS = (Application.platform == RuntimePlatform.IPhonePlayer);
 
                     networkReachableCts = new CancellationTokenSource();
                     UniTask.RunOnThreadPool(async (tkn) =>
                     {
                         await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive, cancellationToken: (CancellationToken)tkn);
+                        await UniTask.SwitchToThreadPool();
 
                         while(!((CancellationToken)tkn).IsCancellationRequested && isNetworkReachable)
                         {
                             await UniTask.Delay(CHECK_NETWORK_REACHABLE_SPAN_MSEC, cancellationToken: (CancellationToken)tkn);
+                            await UniTask.SwitchToThreadPool();
 
                             if(REACHABLE_PING_BREAK)
                                 continue;
 
                             // ICMP Ping is not available on iOS
-                            if(Application.platform != RuntimePlatform.IPhonePlayer)
+                            if(!isIOS)
                             {
-                                Debug.Log("PostmanClient :: network reachable ping");
+                                if(debugLogEnable)
+                                    Debug.Log("PostmanClient :: network reachable ping");
 
                                 try
                                 {
                                     Ping ping = new Ping();
                                     PingReply reply = null;
 
-                                    string ip = serverIpOrUrl.Split(new string[] { ":" }, StringSplitOptions.None)[0];
+                                    string pingHost = host.Split(new string[] { ":" }, StringSplitOptions.None)[0];
                                     IPAddress ipa;
-                                    if(IPAddress.TryParse(ip, out ipa))
+                                    if(IPAddress.TryParse(pingHost, out ipa))
                                         reply = await ping.SendPingAsync(ipa, 2000);
                                     else
                                     {
-                                        string host = serverIpOrUrl.Replace("http://", "").Replace("https://", "").Replace("ws://", "").Replace("wss://", "");
-                                        IPHostEntry hostEntry = Dns.GetHostEntry(host);
+                                        IPHostEntry hostEntry = Dns.GetHostEntry(pingHost);
                                         IPAddress addr = null;
                                         foreach(IPAddress a in hostEntry.AddressList)
                                         {
@@ -287,14 +317,15 @@ namespace Postman
                                     if(reply != null && reply.Status != IPStatus.Success)
                                         isNetworkReachable = false;
                                 }
-                                catch
+                                catch(Exception ex)
                                 {
-                                    // pass
+                                    Debug.LogError(string.Format("PostmanClient :: network reachable ping error - {0}", ex.Message));
                                 }
                             }
                             else
                             {
-                                Debug.Log("PostmanClient :: network reachable check");
+                                if(debugLogEnable)
+                                    Debug.Log("PostmanClient :: network reachable check");
 
                                 if(Application.internetReachability == NetworkReachability.NotReachable)
                                     isNetworkReachable = false;
@@ -320,7 +351,8 @@ namespace Postman
                             if(KEEPALIVE_PING_BREAK)
                                 continue;
 
-                            Debug.Log("PostmanClient :: keepalive ws ping");
+                            if(debugLogEnable)
+                                Debug.Log("PostmanClient :: keepalive ws ping");
 
                             if(webSocket != null && webSocket.IsAlive)
                                 webSocket.Ping();
@@ -339,6 +371,9 @@ namespace Postman
             Debug.Log("PostmanClient :: connection close");
 
             isConnect = false;
+
+            lock(sendLock)
+                sendQueue.Clear();
 
             if(webSocket != null)
             {
@@ -399,10 +434,11 @@ namespace Postman
             if(!e.IsText || e.Data == "")
                 return;
 
-            if(!e.Data.Contains(PostmanMassageData.ProtocolMessageTag))
+            int tagIndex = e.Data.IndexOf(PostmanMassageData.ProtocolMessageTag, StringComparison.Ordinal);
+            if(tagIndex < 0)
                 return;
 
-            string msgstr = e.Data.Split(new string[]{ PostmanMassageData.ProtocolMessageTag }, StringSplitOptions.None)[1];
+            string msgstr = e.Data.Substring(tagIndex + PostmanMassageData.ProtocolMessageTag.Length);
             if(msgstr == PostmanMassageData.PingReturnString)
                 invokePing = true;
             else
@@ -410,13 +446,15 @@ namespace Postman
                 try
                 {
                     PublishMessageData msg = JsonConvert.DeserializeObject<PublishMessageData>(msgstr);
-
-                    lock(((ICollection)messageStack).SyncRoot)
-                        messageStack.Add(msg);
+                    if(msg != null)
+                    {
+                        lock(messageLock)
+                            messageStack.Add(msg);
+                    }
                 }
-                catch
+                catch(Exception ex)
                 {
-                    return;
+                    Debug.LogError(string.Format("PostmanClient :: message parse error - {0}", ex.Message));
                 }
             }			
         }
@@ -506,20 +544,58 @@ namespace Postman
             PublishMessageData pub = new PublishMessageData(channel, message, tag, extention);
             string json = JsonConvert.SerializeObject(pub);
 
-            if(Application.platform == RuntimePlatform.Android)
-            {
-                UniTask.RunOnThreadPool(() => {
-                    webSocket.Send(PostmanMassageData.BuildMessage(MessageType.PUBLISH, json));
-                }).Forget();
-            }
-            else
-            {
-                UniTask.RunOnThreadPool(() => {
-                    webSocket.SendAsync(PostmanMassageData.BuildMessage(MessageType.PUBLISH, json), null);
-                }).Forget();
-            }
+            WebSocket ws = webSocket;
+            SendOrdered(ws, PostmanMassageData.BuildMessage(MessageType.PUBLISH, json));
 
             yield return null;
+        }
+
+        private void SendOrdered(WebSocket ws, string data)
+        {
+            bool startWorker = false;
+
+            lock(sendLock)
+            {
+                sendQueue.Enqueue(new KeyValuePair<WebSocket, string>(ws, data));
+                if(!sending)
+                {
+                    sending = true;
+                    startWorker = true;
+                }
+            }
+
+            if(startWorker)
+                UniTask.RunOnThreadPool(SendWorker).Forget();
+        }
+
+        private void SendWorker()
+        {
+            while(true)
+            {
+                KeyValuePair<WebSocket, string> item;
+
+                lock(sendLock)
+                {
+                    if(sendQueue.Count == 0)
+                    {
+                        sending = false;
+                        return;
+                    }
+
+                    item = sendQueue.Dequeue();
+                }
+
+                try
+                {
+                    WebSocket ws = item.Key;
+                    string data = item.Value;
+                    ws.Send(data);
+                }
+                catch(Exception e)
+                {
+                    Debug.LogError("PostmanClient :: publish error - " + e.Message);
+                }
+            }
         }
 #endregion
 
@@ -527,13 +603,19 @@ namespace Postman
         public string StoreGet(string key)
         {
             ResultMessageData data = StoreGetAsData(key);
-            return data.result;
+            if(data != null)
+                return data.result;
+            else
+                return "";
         }
 
         public async UniTask<string> StoreGetAsync(string key)
         {
             ResultMessageData data = await StoreGetAsDataAsync(key);
-            return data.result;
+            if(data != null)
+                return data.result;
+            else
+                return "";
         }
 
         public ResultMessageData StoreGetAsData(string key)
@@ -545,28 +627,31 @@ namespace Postman
             if(secureToken != "")
                 url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
-            UnityWebRequest request = UnityWebRequest.Get(url);
-            request.SendWebRequest();
-
-            while(!request.isDone);
-
             ResultMessageData responce;
-#if UNITY_2020_1_OR_NEWER
-            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
-#else
-            if(request.isHttpError || request.isNetworkError)
-#endif
+            using(UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                Debug.LogError("PostmanClient :: " + request.error);
-                responce = new ResultMessageData("", request.error);
-            }
-            else
-            {
-                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
-                Debug.Log(string.Format("PostmanClient :: store get [ {0} : {1} ]", key, responce.result));
-            }
+                request.SendWebRequest();
 
-            request.Dispose();
+                while(!request.isDone);
+#if UNITY_2020_1_OR_NEWER
+                if(request.result == UnityWebRequest.Result.ProtocolError
+                    || request.result == UnityWebRequest.Result.ConnectionError
+                    || request.result == UnityWebRequest.Result.DataProcessingError)
+#else
+                if(request.isHttpError || request.isNetworkError)
+#endif
+                {
+                    Debug.LogError("PostmanClient :: " + request.error);
+                    responce = new ResultMessageData("", request.error);
+                }
+                else
+                {
+                    responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
+
+                    if(debugLogEnable && responce != null)
+                        Debug.Log(string.Format("PostmanClient :: store get [ {0} : {1} ]", key, responce.result));
+                }
+            }
 
             return responce;
         }
@@ -580,26 +665,29 @@ namespace Postman
             if(secureToken != "")
                 url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
-            UnityWebRequest request = UnityWebRequest.Get(url);
-            await request.SendWebRequest();
-
             ResultMessageData responce;
+            using(UnityWebRequest request = UnityWebRequest.Get(url))
+            {
+                await request.SendWebRequest();
 #if UNITY_2020_1_OR_NEWER
-            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+                if(request.result == UnityWebRequest.Result.ProtocolError
+                    || request.result == UnityWebRequest.Result.ConnectionError
+                    || request.result == UnityWebRequest.Result.DataProcessingError)
 #else
-            if(request.isHttpError || request.isNetworkError)
+                if(request.isHttpError || request.isNetworkError)
 #endif
-            {
-                Debug.LogError("PostmanClient :: " + request.error);
-                responce = new ResultMessageData("", request.error);
-            }
-            else
-            {
-                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
-                Debug.Log(string.Format("PostmanClient :: store get [ {0} : {1} ]", key, responce.result));
-            }
+                {
+                    Debug.LogError("PostmanClient :: " + request.error);
+                    responce = new ResultMessageData("", request.error);
+                }
+                else
+                {
+                    responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
 
-            request.Dispose();
+                    if(debugLogEnable && responce != null)
+                        Debug.Log(string.Format("PostmanClient :: store get [ {0} : {1} ]", key, responce.result));
+                }
+            }
 
             return responce;
         }
@@ -609,13 +697,19 @@ namespace Postman
         public string StoreSet(string key, string val)
         {
             ResultMessageData data = StoreSetAsData(key, val);
-            return data.result;
+            if(data != null)
+                return data.result;
+            else
+                return "";
         }
 
         public async UniTask<string> StoreSetAsync(string key, string val)
         {
             ResultMessageData data = await StoreSetAsDataAsync(key, val);
-            return data.result;
+            if(data != null)
+                return data.result;
+            else
+                return "";
         }
 
         public ResultMessageData StoreSetAsData(string key, string val)
@@ -628,25 +722,28 @@ namespace Postman
             if(secureToken != "")
                 url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
-            UnityWebRequest request = UnityWebRequest.Get(url);
-            request.SendWebRequest();
-
-            while(!request.isDone);
-
             ResultMessageData responce = new ResultMessageData("", "");
-#if UNITY_2020_1_OR_NEWER
-            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
-#else
-            if(request.isHttpError || request.isNetworkError)
-#endif
-                Debug.LogError("PostmanClient :: " + request.error);
-            else
+            using(UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
-                Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
-            }
+                request.SendWebRequest();
 
-            request.Dispose();
+                while(!request.isDone);
+#if UNITY_2020_1_OR_NEWER
+                if(request.result == UnityWebRequest.Result.ProtocolError
+                    || request.result == UnityWebRequest.Result.ConnectionError
+                    || request.result == UnityWebRequest.Result.DataProcessingError)
+#else
+                if(request.isHttpError || request.isNetworkError)
+#endif
+                    Debug.LogError("PostmanClient :: " + request.error);
+                else
+                {
+                    responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
+
+                    if(debugLogEnable)
+                        Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
+                }
+            }
 
             return responce;
         }
@@ -661,23 +758,26 @@ namespace Postman
             if(secureToken != "")
                 url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
-            UnityWebRequest request = UnityWebRequest.Get(url);
-            await request.SendWebRequest();
-
             ResultMessageData responce = new ResultMessageData("", "");
-#if UNITY_2020_1_OR_NEWER
-            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
-#else
-            if(request.isHttpError || request.isNetworkError)
-#endif
-                Debug.LogError("PostmanClient :: " + request.error);
-            else
+            using(UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
-                Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
-            }
+                await request.SendWebRequest();
+#if UNITY_2020_1_OR_NEWER
+                if(request.result == UnityWebRequest.Result.ProtocolError
+                    || request.result == UnityWebRequest.Result.ConnectionError
+                    || request.result == UnityWebRequest.Result.DataProcessingError)
+#else
+                if(request.isHttpError || request.isNetworkError)
+#endif
+                    Debug.LogError("PostmanClient :: " + request.error);
+                else
+                {
+                    responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
 
-            request.Dispose();
+                    if(debugLogEnable)
+                        Debug.Log(string.Format("PostmanClient :: store set [ {0} : {1} ]", key, val));
+                }
+            }
 
             return responce;
         }
@@ -687,10 +787,14 @@ namespace Postman
         public bool StoreHasKey(string key)
         {
             ResultMessageData data = StoreHasKeyAsData(key);
-
-            bool b = false;
-            bool.TryParse(data.result, out b);
-            return b;
+            if(data != null)
+            {
+                bool b = false;
+                bool.TryParse(data.result, out b);
+                return b;
+            }
+            else
+                return false;
         }
 
         public ResultMessageData StoreHasKeyAsData(string key)
@@ -702,28 +806,31 @@ namespace Postman
             if(secureToken != "")
                 url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
-            UnityWebRequest request = UnityWebRequest.Get(url);
-            request.SendWebRequest();
-
-            while(!request.isDone);
-
             ResultMessageData responce;
-#if UNITY_2020_1_OR_NEWER
-            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
-#else
-            if(request.isHttpError || request.isNetworkError)
-#endif
+            using(UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                Debug.LogError("PostmanClient :: " + request.error);
-                responce = new ResultMessageData("", request.error);
-            }
-            else
-            {
-                responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
-                Debug.Log(string.Format("PostmanClient :: store haskey [ {0} ] ", key) + responce.result);
-            }
+                request.SendWebRequest();
 
-            request.Dispose();
+                while(!request.isDone);
+#if UNITY_2020_1_OR_NEWER
+                if(request.result == UnityWebRequest.Result.ProtocolError
+                    || request.result == UnityWebRequest.Result.ConnectionError
+                    || request.result == UnityWebRequest.Result.DataProcessingError)
+#else
+                if(request.isHttpError || request.isNetworkError)
+#endif
+                {
+                    Debug.LogError("PostmanClient :: " + request.error);
+                    responce = new ResultMessageData("", request.error);
+                }
+                else
+                {
+                    responce = JsonConvert.DeserializeObject<ResultMessageData>(request.downloadHandler.text);
+
+                    if(debugLogEnable && responce != null)
+                        Debug.Log(string.Format("PostmanClient :: store haskey [ {0} ] ", key) + responce.result);
+                }
+            }
 
             return responce;
         }
@@ -739,21 +846,25 @@ namespace Postman
             if(secureToken != "")
                 url += "&tkn=" + Uri.EscapeDataString(secureToken);
 
-            UnityWebRequest request = UnityWebRequest.Get(url);
-            request.SendWebRequest();
+            using(UnityWebRequest request = UnityWebRequest.Get(url))
+            {
+                request.SendWebRequest();
 
-            while(!request.isDone);
-
+                while(!request.isDone);
 #if UNITY_2020_1_OR_NEWER
-            if(request.result == UnityWebRequest.Result.ProtocolError || request.result == UnityWebRequest.Result.ConnectionError)
+                if(request.result == UnityWebRequest.Result.ProtocolError
+                    || request.result == UnityWebRequest.Result.ConnectionError
+                    || request.result == UnityWebRequest.Result.DataProcessingError)
 #else
-            if(request.isHttpError || request.isNetworkError)
+                if(request.isHttpError || request.isNetworkError)
 #endif
-                Debug.LogError("PostmanClient :: " + request.error);
-            else
-                Debug.Log(string.Format("PostmanClient :: store delete [ {0} ]", key));
-
-            request.Dispose();
+                    Debug.LogError("PostmanClient :: " + request.error);
+                else
+                {
+                    if(debugLogEnable)
+                        Debug.Log(string.Format("PostmanClient :: store delete [ {0} ]", key));
+                }
+            }
         }
 #endregion
 
