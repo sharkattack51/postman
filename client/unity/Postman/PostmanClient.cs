@@ -195,7 +195,7 @@ namespace Postman
 #region connect/close
         public void Connect(bool asAsync = true)
         {
-            if(isConnect && webSocket != null && webSocket.IsAlive)
+            if(isConnect && webSocket != null && webSocket.ReadyState == WebSocketState.Open)
             {
                 if(debugLogEnable)
                     Debug.Log("PostmanClient :: already connected");
@@ -268,7 +268,7 @@ namespace Postman
                     networkReachableCts = new CancellationTokenSource();
                     UniTask.RunOnThreadPool(async (tkn) =>
                     {
-                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive, cancellationToken: (CancellationToken)tkn);
+                        await UniTask.WaitUntil(() => webSocket != null && webSocket.ReadyState == WebSocketState.Open, cancellationToken: (CancellationToken)tkn);
                         await UniTask.SwitchToThreadPool();
 
                         while(!((CancellationToken)tkn).IsCancellationRequested && isNetworkReachable)
@@ -327,7 +327,10 @@ namespace Postman
                                 if(debugLogEnable)
                                     Debug.Log("PostmanClient :: network reachable check");
 
-                                if(Application.internetReachability == NetworkReachability.NotReachable)
+                                await UniTask.SwitchToMainThread();
+                                bool notReach = (Application.internetReachability == NetworkReachability.NotReachable);
+                                await UniTask.SwitchToThreadPool();
+                                if(notReach)
                                     isNetworkReachable = false;
                             }
                         }
@@ -337,16 +340,16 @@ namespace Postman
                 // keepalive websocket ping
                 if(keepAlivePing && keepalivePingCts == null)
                 {
-                    Debug.LogWarning("PostmanClient :: keepalive ws ping started. synchronous process and may freeze for a short period of time.");
-
                     keepalivePingCts = new CancellationTokenSource();
                     UniTask.RunOnThreadPool(async (tkn) =>
                     {
-                        await UniTask.WaitUntil(() => webSocket != null && webSocket.IsAlive, cancellationToken: (CancellationToken)tkn);
+                        await UniTask.WaitUntil(() => webSocket != null && webSocket.ReadyState == WebSocketState.Open, cancellationToken: (CancellationToken)tkn);
+                        await UniTask.SwitchToThreadPool();
 
                         while(!((CancellationToken)tkn).IsCancellationRequested)
                         {
                             await UniTask.Delay(WS_KEEPALIVE_PING_SPAN_MSEC, cancellationToken: (CancellationToken)tkn);
+                            await UniTask.SwitchToThreadPool();
 
                             if(KEEPALIVE_PING_BREAK)
                                 continue;
@@ -354,8 +357,16 @@ namespace Postman
                             if(debugLogEnable)
                                 Debug.Log("PostmanClient :: keepalive ws ping");
 
-                            if(webSocket != null && webSocket.IsAlive)
-                                webSocket.Ping();
+                            try
+                            {
+                                WebSocket ws = webSocket;
+                                if(ws != null)
+                                    ws.Ping();
+                            }
+                            catch(Exception e)
+                            {
+                                Debug.LogError("PostmanClient :: keepalive ping error - " + e.Message);
+                            }
                         }
                     }, keepalivePingCts.Token).Forget();
                 }
@@ -409,7 +420,7 @@ namespace Postman
 
                 yield return new WaitForSeconds(wait + UnityEngine.Random.Range(0.0f, 1.0f));
 
-                if(isConnect && webSocket != null && webSocket.IsAlive)
+                if(isConnect && webSocket != null && webSocket.ReadyState == WebSocketState.Open)
                     break;
 
                 if(exponentialBackoff)
@@ -503,7 +514,7 @@ namespace Postman
 #region subscribe
         public void Subscribe(string channel, string client_info = "")
         {
-            if(isConnect && webSocket != null && webSocket.IsAlive)
+            if(isConnect && webSocket != null && webSocket.ReadyState == WebSocketState.Open)
                 StartCoroutine(SubscribeCoroutine(channel, client_info));
         }
 
@@ -519,7 +530,7 @@ namespace Postman
 #region unsubscribe
         public void Unsubscribe(string channel)
         {
-            if(isConnect && webSocket != null && webSocket.IsAlive)
+            if(isConnect && webSocket != null && webSocket.ReadyState == WebSocketState.Open)
                 StartCoroutine(UnsubscribeCoroutine(channel));
         }
 
@@ -535,7 +546,7 @@ namespace Postman
 #region publish
         public void Publish(string channel, string message, string tag = "", string extention = "")
         {
-            if(isConnect && webSocket != null && webSocket.IsAlive)
+            if(isConnect && webSocket != null && webSocket.ReadyState == WebSocketState.Open)
                 StartCoroutine(PublishCoroutine(channel, message, tag, extention));
         }
 
